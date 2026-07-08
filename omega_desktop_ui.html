@@ -1,0 +1,1959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ω OMEGA Desktop</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f14;
+    --sidebar-bg: #1a1c23;
+    --sidebar-hover: #23252e;
+    --sidebar-active: #2a2d38;
+    --text-primary: #e3e5ec;
+    --text-secondary: #9aa0b4;
+    --text-muted: #5c6070;
+    --border: #2a2d38;
+    --input-bg: #1e2029;
+    --input-border: #2e3140;
+    --glow-color: #0f2a6e;
+    --accent-blue: #0d6efd;
+    --upgrade-bg: #1a6ef5;
+    --upgrade-hover: #1558c8;
+    --icon-color: #7a8099;
+    --icon-hover: #b0b8d0;
+    --sidebar-width: 230px;
+    --font: 'Google Sans', 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --accent: #00d4ff;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font);
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── ICON RAIL ── */
+  .icon-rail {
+    width: 52px;
+    min-width: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 0;
+    gap: 4px;
+    background: var(--bg);
+    z-index: 10;
+  }
+
+  .rail-logo {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px; cursor: pointer;
+  }
+
+  .rail-icon-btn {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: none; background: transparent;
+    color: var(--icon-color); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
+    position: relative;
+  }
+  .rail-icon-btn:hover { background: var(--sidebar-hover); color: var(--icon-hover); }
+  .rail-icon-btn.active { background: var(--sidebar-hover); color: var(--accent); }
+  .rail-icon-btn svg { width: 20px; height: 20px; }
+  .rail-icon-btn .dot {
+    position: absolute; top: 6px; right: 6px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--success);
+    border: 2px solid var(--bg);
+  }
+
+  .rail-spacer { flex: 1; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-width);
+    background: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--border);
+    transform: translateX(calc(-1 * var(--sidebar-width)));
+    transition: transform 0.22s cubic-bezier(.4,0,.2,1);
+    position: relative;
+    z-index: 5;
+  }
+  .sidebar.open { transform: translateX(0); }
+
+  .sidebar-top {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-gem-logo {
+    display: flex; align-items: center; gap: 8px; flex: 1;
+    font-size: 15px; font-weight: 600; color: var(--text-primary);
+    letter-spacing: -0.01em; cursor: pointer;
+  }
+
+  .sidebar-collapse-btn {
+    width: 32px; height: 32px; border-radius: 6px;
+    border: none; background: transparent;
+    color: var(--icon-color); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .sidebar-collapse-btn:hover { background: var(--sidebar-hover); }
+
+  .sidebar-new-chat {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    font-size: 14px; color: var(--text-primary);
+    cursor: pointer; border-radius: 8px; margin: 8px 8px 2px;
+    transition: background 0.15s;
+    background: var(--sidebar-active);
+  }
+  .sidebar-new-chat:hover { background: var(--sidebar-hover); }
+
+  .sidebar-nav {
+    display: flex; flex-direction: column; padding: 4px 8px;
+  }
+
+  .sidebar-nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px;
+    font-size: 14px; color: var(--text-secondary);
+    cursor: pointer; border-radius: 8px;
+    transition: background 0.15s, color 0.15s;
+    border: none; background: none; width: 100%; text-align: left;
+    font-family: var(--font);
+  }
+  .sidebar-nav-item:hover { background: var(--sidebar-hover); color: var(--text-primary); }
+  .sidebar-nav-item.active { background: var(--sidebar-active); color: var(--accent); }
+  .sidebar-nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .sidebar-nav-item .badge {
+    margin-left: auto; font-size: 10px; color: var(--text-muted);
+    background: var(--sidebar-hover); padding: 1px 6px; border-radius: 6px;
+  }
+
+  .sidebar-section-label {
+    font-size: 11px; font-weight: 600;
+    color: var(--text-muted); letter-spacing: 0.05em;
+    padding: 12px 14px 4px; text-transform: uppercase;
+  }
+
+  .sidebar-recent-item {
+    padding: 7px 14px;
+    font-size: 13px; color: var(--text-secondary);
+    cursor: pointer; border-radius: 6px; margin: 0 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: background 0.15s, color 0.15s;
+  }
+  .sidebar-recent-item:hover { background: var(--sidebar-hover); color: var(--text-primary); }
+
+  .sidebar-bottom {
+    margin-top: auto;
+    padding: 10px 8px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .user-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, #00d4ff, #0066ff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600; color: #fff; flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .user-name {
+    font-size: 13px; color: var(--text-secondary);
+    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  .settings-btn {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: none; background: transparent;
+    color: var(--icon-color); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .settings-btn:hover { background: var(--sidebar-hover); }
+  .settings-btn svg { width: 16px; height: 16px; }
+
+  /* ── SETTINGS POPUP ── */
+  .settings-popup {
+    position: absolute;
+    left: 56px;
+    bottom: 60px;
+    background: #1e2130;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 240px;
+    padding: 8px 0;
+    z-index: 20;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    opacity: 0; pointer-events: none;
+    transform: translateY(8px);
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .settings-popup.open { opacity: 1; pointer-events: all; transform: translateY(0); }
+
+  .settings-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 14px;
+    font-size: 14px; color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.12s;
+    gap: 8px;
+  }
+  .settings-item:hover { background: var(--sidebar-hover); color: var(--text-primary); }
+  .settings-item .new-badge {
+    font-size: 11px; font-weight: 600;
+    background: #1a6ef5; color: #fff;
+    border-radius: 4px; padding: 1px 6px;
+  }
+  .settings-item .item-left { display: flex; align-items: center; gap: 8px; }
+  .settings-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  .settings-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+  .location-info {
+    padding: 10px 14px;
+    font-size: 12px; color: #5c6070;
+    line-height: 1.5;
+  }
+  .location-dot { color: var(--success); margin-right: 4px; }
+
+  /* ── MAIN ── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 10px 16px;
+    gap: 10px;
+    position: absolute; top: 0; left: 0; right: 0;
+    z-index: 2;
+  }
+  .topbar-left {
+    margin-right: auto;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .topbar-title {
+    font-size: 14px; color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .topbar-settings-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: none; background: transparent;
+    color: var(--icon-color); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .topbar-settings-btn:hover { background: rgba(255,255,255,0.07); }
+  .topbar-settings-btn svg { width: 20px; height: 20px; }
+
+  .upgrade-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--upgrade-bg);
+    color: #fff;
+    border: none; border-radius: 20px;
+    padding: 7px 16px;
+    font-size: 14px; font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-family: var(--font);
+  }
+  .upgrade-btn:hover { background: var(--upgrade-hover); }
+  .upgrade-btn svg { width: 16px; height: 16px; }
+
+  .main-bg-glow {
+    position: absolute;
+    bottom: 30%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 300px;
+    background: radial-gradient(ellipse at center, #0f2a6e 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── TAB CONTENT ── */
+  .tab-content {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+  .tab-content.active { display: flex; }
+
+  /* ── CHAT WELCOME ── */
+  .welcome-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+    padding-bottom: 120px;
+  }
+
+  .welcome-title {
+    font-size: 28px;
+    font-weight: 400;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+    margin-bottom: 12px;
+  }
+  .welcome-subtitle {
+    font-size: 15px;
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+  .welcome-status {
+    display: flex; gap: 16px; margin-top: 28px;
+    font-size: 13px; color: var(--text-secondary);
+  }
+  .welcome-status-item {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--sidebar-bg);
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+  .welcome-status-item .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    display: inline-block;
+  }
+  .welcome-status-item .dot.green { background: var(--success); }
+  .welcome-status-item .dot.blue { background: var(--accent); }
+
+  /* ── CHAT MESSAGES ── */
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 80px 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    position: relative;
+    z-index: 1;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .chat-messages::-webkit-scrollbar { width: 6px; }
+  .chat-messages::-webkit-scrollbar-track { background: transparent; }
+  .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .msg-row {
+    display: flex;
+    gap: 12px;
+    max-width: 760px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .msg-row.user { justify-content: flex-end; }
+
+  .msg-bubble {
+    padding: 12px 16px;
+    border-radius: 18px;
+    font-size: 15px;
+    line-height: 1.55;
+    max-width: 80%;
+  }
+  .msg-bubble.user {
+    background: #23252e;
+    color: var(--text-primary);
+    border-radius: 18px 18px 4px 18px;
+  }
+  .msg-bubble.ai {
+    background: transparent;
+    color: var(--text-primary);
+    border-radius: 18px 18px 18px 4px;
+    padding: 12px 0;
+    max-width: 100%;
+  }
+  .msg-bubble.ai p { margin-bottom: 8px; }
+  .msg-bubble.ai p:last-child { margin-bottom: 0; }
+  .msg-bubble.ai code {
+    background: var(--sidebar-hover);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  .msg-bubble.ai pre {
+    background: var(--sidebar-hover);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 8px 0;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .msg-bubble.ai pre code { background: none; padding: 0; }
+
+  .ai-avatar {
+    width: 28px; height: 28px; flex-shrink: 0; margin-top: 10px;
+  }
+
+  /* ── INPUT AREA ── */
+  .input-area {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    z-index: 2;
+    padding: 0 24px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .input-wrapper {
+    width: 100%;
+    max-width: 660px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 26px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px 10px 14px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .input-wrapper:focus-within {
+    border-color: #3a3d50;
+    box-shadow: 0 0 0 1px #3a3d50;
+  }
+
+  .input-plus-btn {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: none; background: transparent;
+    color: var(--icon-color); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+  }
+  .input-plus-btn:hover { background: rgba(255,255,255,0.08); color: var(--icon-hover); }
+  .input-plus-btn svg { width: 18px; height: 18px; }
+
+  .input-field {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-size: 15px;
+    font-family: var(--font);
+    caret-color: var(--text-primary);
+    resize: none;
+    min-height: 24px;
+    max-height: 200px;
+    overflow-y: auto;
+    line-height: 1.5;
+  }
+  .input-field::placeholder { color: var(--text-muted); }
+
+  .input-right {
+    display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+  }
+
+  .model-selector {
+    display: flex; align-items: center; gap: 4px;
+    background: transparent; border: none;
+    color: var(--text-secondary); font-size: 14px;
+    font-family: var(--font); cursor: pointer;
+    padding: 4px 6px; border-radius: 8px;
+    transition: background 0.15s;
+  }
+  .model-selector:hover { background: rgba(255,255,255,0.07); }
+  .model-selector svg { width: 14px; height: 14px; }
+
+  .mic-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: none; background: transparent;
+    color: var(--icon-color); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  .mic-btn:hover { background: rgba(255,255,255,0.08); color: var(--icon-hover); }
+  .mic-btn svg { width: 18px; height: 18px; }
+
+  .send-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: none;
+    background: #3a3d50;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  .send-btn.active { background: #5b9cf6; color: #fff; }
+  .send-btn:hover.active { background: #4585e8; }
+  .send-btn svg { width: 16px; height: 16px; }
+
+  /* ── THINKING ── */
+  .thinking-indicator {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 24px 4px;
+    color: var(--text-muted);
+    font-size: 13px;
+    max-width: 760px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .thinking-indicator.show { display: flex; }
+
+  .typing-dots span {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    animation: dot-bounce 1.2s infinite ease-in-out;
+    margin-right: 3px;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dot-bounce {
+    0%, 80%, 100% { transform: scale(0.8); opacity: 0.4; }
+    40% { transform: scale(1.1); opacity: 1; }
+  }
+
+  /* ── TERMINAL ── */
+  .terminal-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+    z-index: 1;
+  }
+  .terminal-output {
+    flex: 1;
+    background: #060a12;
+    padding: 20px;
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-primary);
+  }
+  .terminal-output .line { white-space: pre-wrap; word-wrap: break-word; }
+  .terminal-output .line.prompt { color: var(--accent); }
+  .terminal-output .line.output { color: #d4d4d4; }
+  .terminal-output .line.error { color: var(--error); }
+  .terminal-output .line.system { color: var(--text-muted); font-style: italic; }
+  .terminal-input-row {
+    display: flex;
+    background: #060a12;
+    border-top: 1px solid var(--border);
+    padding: 0 20px;
+    align-items: center;
+  }
+  .terminal-input-row .prompt {
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding-right: 8px;
+    white-space: nowrap;
+  }
+  .terminal-input-row input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 10px 0;
+    outline: none;
+  }
+  .terminal-input-row input::placeholder { color: var(--text-muted); }
+
+  /* ── TOOLS ── */
+  .tools-container {
+    padding: 20px;
+    overflow-y: auto;
+    height: 100%;
+    position: relative;
+    z-index: 1;
+  }
+  .tools-search {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-primary);
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    margin-bottom: 16px;
+    outline: none;
+  }
+  .tools-search:focus { border-color: var(--accent); }
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 8px;
+  }
+  .tool-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tool-card:hover { border-color: var(--accent); }
+  .tool-card .name {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .tool-card .desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* ── MEMORY ── */
+  .memory-container {
+    padding: 20px;
+    overflow-y: auto;
+    height: 100%;
+    position: relative;
+    z-index: 1;
+  }
+  .memory-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .memory-controls input {
+    flex: 1;
+    min-width: 100px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-primary);
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    outline: none;
+  }
+  .memory-controls input:focus { border-color: var(--accent); }
+  .memory-controls button {
+    background: var(--upgrade-bg);
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .memory-controls button:hover { opacity: 0.9; }
+  .memory-controls button.sec {
+    background: var(--sidebar-hover);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+  .memory-item {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-bottom: 8px;
+  }
+  .memory-item .key {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .memory-item .value {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+  .memory-item .del-btn {
+    float: right;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .memory-item .del-btn:hover { background: rgba(239,68,68,0.2); color: var(--error); }
+
+  /* ── NOTES ── */
+  .notes-container {
+    padding: 20px;
+    overflow-y: auto;
+    height: 100%;
+    position: relative;
+    z-index: 1;
+  }
+  .note-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .note-card:hover { border-color: var(--accent); }
+  .note-card .title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+  .note-card .tag {
+    display: inline-block;
+    background: rgba(0,212,255,0.1);
+    color: var(--accent);
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    margin-right: 4px;
+  }
+  .note-card .date {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* ── MCP ── */
+  .mcp-container {
+    padding: 20px;
+    overflow-y: auto;
+    height: 100%;
+    position: relative;
+    z-index: 1;
+  }
+  .mcp-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .mcp-card h3 { font-size: 14px; color: var(--accent); margin-bottom: 8px; }
+  .mcp-card p { font-size: 13px; color: var(--text-secondary); }
+  .mcp-card .status {
+    display: inline-block;
+    padding: 2px 10px; border-radius: 10px;
+    font-size: 11px; font-weight: 600;
+  }
+  .mcp-card .status.connected { background: rgba(34,197,94,0.15); color: var(--success); }
+  .mcp-card .status.disconnected { background: rgba(100,116,139,0.15); color: var(--text-muted); }
+  .mcp-card .tool-list { margin-top: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
+  .mcp-connect-form {
+    display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;
+  }
+  .mcp-connect-form input {
+    flex: 1; min-width: 120px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-primary);
+    padding: 8px 12px; border-radius: var(--radius);
+    font-size: 13px; outline: none;
+  }
+  .mcp-connect-form input:focus { border-color: var(--accent); }
+  .mcp-connect-form button {
+    background: var(--upgrade-bg); border: none;
+    color: white; padding: 8px 16px;
+    border-radius: var(--radius); cursor: pointer;
+    font-size: 12px; font-weight: 600;
+  }
+
+  /* ── FILES ── */
+  .files-container {
+    display: flex; height: 100%;
+    position: relative; z-index: 1;
+  }
+  .files-sidebar {
+    width: 200px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    padding: 8px; overflow-y: auto;
+  }
+  .files-sidebar .dir-item {
+    padding: 6px 10px; font-size: 12px;
+    color: var(--text-secondary); cursor: pointer;
+    border-radius: 4px;
+  }
+  .files-sidebar .dir-item:hover { background: var(--sidebar-hover); color: var(--text-primary); }
+  .files-main {
+    flex: 1; display: flex; flex-direction: column;
+  }
+  .files-toolbar {
+    display: flex; gap: 8px;
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+  .files-toolbar .path {
+    flex: 1;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-primary);
+    padding: 6px 10px; border-radius: 4px;
+    font-family: var(--font-mono); font-size: 12px; outline: none;
+  }
+  .files-toolbar button {
+    background: var(--sidebar-hover);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 6px 12px; border-radius: 4px;
+    cursor: pointer; font-size: 12px;
+  }
+  .files-toolbar button:hover { background: var(--border); color: var(--text-primary); }
+  .files-list {
+    flex: 1; overflow-y: auto; padding: 4px 0;
+  }
+  .file-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 12px; font-size: 13px;
+    cursor: pointer; color: var(--text-secondary);
+    font-family: var(--font-mono);
+  }
+  .file-item:hover { background: var(--sidebar-hover); color: var(--text-primary); }
+  .file-item .size { margin-left: auto; font-size: 11px; color: var(--text-muted); }
+
+  /* ── SYSTEM ── */
+  .system-container {
+    padding: 20px;
+    overflow-y: auto;
+    height: 100%;
+    position: relative;
+    z-index: 1;
+  }
+  .sys-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 12px; margin-bottom: 16px;
+  }
+  .sys-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .sys-card h3 {
+    font-size: 11px; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+  .sys-stat {
+    display: flex; justify-content: space-between;
+    padding: 6px 0; font-size: 13px;
+  }
+  .sys-stat .label { color: var(--text-secondary); }
+  .sys-stat .value { color: var(--text-primary); font-weight: 600; font-family: var(--font-mono); }
+  .bar-container {
+    height: 6px;
+    background: var(--sidebar-hover);
+    border-radius: 3px; margin: 4px 0 8px; overflow: hidden;
+  }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+  .bar-fill.green { background: var(--success); }
+  .bar-fill.yellow { background: var(--warning); }
+  .bar-fill.red { background: var(--error); }
+  .bar-fill.blue { background: var(--accent); }
+
+  /* ── SETTINGS ── */
+  .settings-area {
+    padding: 20px;
+    overflow-y: auto;
+    height: 100%;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── STATUS BAR ── */
+  .statusbar {
+    height: 28px;
+    background: var(--sidebar-bg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 11px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    gap: 16px;
+  }
+  .statusbar .dot {
+    display: inline-block;
+    width: 6px; height: 6px; border-radius: 50%; margin-right: 4px;
+  }
+  .statusbar .dot.green { background: var(--success); }
+  .statusbar .status-item { display: flex; align-items: center; gap: 4px; }
+  .statusbar .spacer { flex: 1; }
+  .statusbar .model { color: var(--accent); font-family: var(--font-mono); font-size: 10px; }
+
+  @keyframes shimmer {
+    0% { background-position: -200px 0; }
+    100% { background-position: 200px 0; }
+  }
+  .shimmer {
+    background: linear-gradient(90deg, var(--sidebar-hover) 25%, var(--sidebar-active) 50%, var(--sidebar-hover) 75%);
+    background-size: 400px 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  @media (max-width: 600px) {
+    .icon-rail { width: 44px; min-width: 44px; }
+    .welcome-title { font-size: 20px; }
+    .input-wrapper { max-width: 100%; }
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="icon-rail" id="iconRail">
+  <div class="rail-logo" onclick="toggleSidebar()">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <path d="M14 2C14 2 15.5 8.5 20 13C15.5 17.5 14 24 14 24C14 24 12.5 17.5 8 13C12.5 8.5 14 2 14 2Z" fill="url(#og1)"/>
+      <defs>
+        <linearGradient id="og1" x1="8" y1="2" x2="20" y2="24" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#00d4ff"/>
+          <stop offset="50%" stop-color="#0066ff"/>
+          <stop offset="100%" stop-color="#a855f7"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  </div>
+
+  <button class="rail-icon-btn" title="New chat" onclick="newChat()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>
+  </button>
+  <button class="rail-icon-btn" title="Terminal" onclick="switchTab('terminal')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+    </svg>
+  </button>
+  <button class="rail-icon-btn" title="Tools" onclick="switchTab('tools')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+    </svg>
+  </button>
+  <button class="rail-icon-btn" title="System" onclick="switchTab('system')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+    </svg>
+  </button>
+  <button class="rail-icon-btn" title="Memory" onclick="switchTab('memory')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  </button>
+  <button class="rail-icon-btn" title="Files" onclick="switchTab('files')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+    </svg>
+  </button>
+
+  <div class="rail-spacer"></div>
+
+  <button class="rail-icon-btn" title="Settings" onclick="toggleSettings()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  </button>
+
+  <div style="position:relative;">
+    <div class="user-avatar" style="margin: 6px auto; width:30px; height:30px; font-size:12px;" onclick="toggleSettings()">Ω</div>
+    <div class="settings-popup" id="settingsPopup">
+      <div class="settings-item" onclick="newChat()"><div class="item-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search</div></div>
+      <div class="settings-item" onclick="switchTab('memory')"><div class="item-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Memory</div></div>
+      <div class="settings-item" onclick="switchTab('notes')"><div class="item-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Notes</div></div>
+      <div class="settings-item" onclick="switchTab('mcp')"><div class="item-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>MCP Plugins</div></div>
+      <div class="settings-divider"></div>
+      <div class="settings-item" onclick="runDiagnostics()"><div class="item-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Diagnostics</div></div>
+      <div class="settings-item" onclick="switchTab('settings')"><div class="item-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>Settings</div></div>
+      <div class="settings-divider"></div>
+      <div class="location-info">
+        <span class="location-dot">●</span> Ω OMEGA v1.0.0<br>
+        <span id="popupModel">233 tools loaded</span><br>
+        <span id="popupStatus" style="color:var(--success)">● Connected</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <div class="sidebar-gem-logo">
+      <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
+        <path d="M14 2C14 2 15.5 8.5 20 13C15.5 17.5 14 24 14 24C14 24 12.5 17.5 8 13C12.5 8.5 14 2 14 2Z" fill="url(#og2)"/>
+        <defs><linearGradient id="og2" x1="8" y1="2" x2="20" y2="24" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#00d4ff"/><stop offset="50%" stop-color="#0066ff"/><stop offset="100%" stop-color="#a855f7"/></linearGradient></defs>
+      </svg>
+      Ω OMEGA
+    </div>
+    <button class="sidebar-collapse-btn" onclick="toggleSidebar()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="sidebar-new-chat" onclick="newChat()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+    New chat
+  </div>
+
+  <div class="sidebar-nav">
+    <button class="sidebar-nav-item active" data-tab="chat" onclick="switchTab('chat')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Chat
+    </button>
+    <button class="sidebar-nav-item" data-tab="terminal" onclick="switchTab('terminal')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      Terminal
+    </button>
+    <button class="sidebar-nav-item" data-tab="tools" onclick="switchTab('tools')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      Tools
+      <span class="badge" id="toolsBadge">...</span>
+    </button>
+    <button class="sidebar-nav-item" data-tab="memory" onclick="switchTab('memory')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Memory
+    </button>
+    <button class="sidebar-nav-item" data-tab="notes" onclick="switchTab('notes')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Notes
+    </button>
+    <button class="sidebar-nav-item" data-tab="mcp" onclick="switchTab('mcp')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      MCP Plugins
+    </button>
+    <button class="sidebar-nav-item" data-tab="files" onclick="switchTab('files')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Files
+    </button>
+    <button class="sidebar-nav-item" data-tab="system" onclick="switchTab('system')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      System
+    </button>
+    <button class="sidebar-nav-item" data-tab="settings" onclick="switchTab('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+  </div>
+
+  <div class="sidebar-section-label">Recent</div>
+  <div id="recentChats">
+    <div class="sidebar-recent-item" onclick="loadChat(0)">Welcome to Ω OMEGA</div>
+  </div>
+
+  <div class="sidebar-bottom">
+    <div class="user-avatar">Ω</div>
+    <span class="user-name">OMEGA Desktop</span>
+    <button class="settings-btn" title="Settings" onclick="switchTab('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-title" id="topbarTitle">Chat</span>
+    </div>
+    <button class="topbar-settings-btn" title="Activity" onclick="toggleSettings()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+    <button class="upgrade-btn" onclick="switchTab('system')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+      System
+    </button>
+  </div>
+
+  <div class="main-bg-glow"></div>
+
+  <!-- ═══ CHAT TAB ═══ -->
+  <div class="tab-content active" id="tab-chat">
+    <div class="welcome-area" id="welcomeArea">
+      <h1 class="welcome-title">Ω OMEGA at your service</h1>
+      <p class="welcome-subtitle">Your AI-powered desktop companion</p>
+      <div class="welcome-status">
+        <div class="welcome-status-item"><span class="dot green"></span><span id="welcomeStatus">Connected</span></div>
+        <div class="welcome-status-item"><span class="dot blue"></span><span id="welcomeTools">Loading...</span></div>
+      </div>
+    </div>
+
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="thinking-indicator" id="thinkingIndicator">
+      <div class="typing-dots"><span></span><span></span><span></span></div>
+      <span>Ω OMEGA is thinking...</span>
+    </div>
+
+    <div class="input-area">
+      <div class="input-wrapper">
+        <button class="input-plus-btn" title="Add files" onclick="document.getElementById('chatInput').value = '/exec '; document.getElementById('chatInput').focus();">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+
+        <textarea class="input-field" id="chatInput" placeholder="Ask Ω OMEGA anything..." rows="1" oninput="handleInput(this)" onkeydown="handleKeydown(event)"></textarea>
+
+        <div class="input-right">
+          <button class="model-selector" id="modelSelector" title="Current model">
+            Ω
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+          <button class="mic-btn" title="Clear chat" onclick="newChat()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5"/>
+              <polyline points="5 12 12 5 19 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TERMINAL TAB ═══ -->
+  <div class="tab-content" id="tab-terminal">
+    <div class="terminal-container">
+      <div class="terminal-output" id="terminalOutput">
+        <div class="line system">Ω OMEGA Terminal — PowerShell</div>
+        <div class="line system">Type any PowerShell command below.</div>
+        <div class="line" style="margin-top:8px"></div>
+      </div>
+      <div class="terminal-input-row">
+        <span class="prompt">PS Ω></span>
+        <input type="text" id="terminalInput" placeholder="Enter a PowerShell command..." onkeydown="handleTerminalKey(event)">
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TOOLS TAB ═══ -->
+  <div class="tab-content" id="tab-tools">
+    <div class="tools-container">
+      <input type="text" class="tools-search" id="toolsSearch" placeholder="Search tools..." oninput="filterTools()">
+      <div class="tools-grid" id="toolsGrid">
+        <div class="tool-card"><div class="name shimmer" style="height:16px;width:60%"></div><div class="desc shimmer" style="height:12px;width:90%;margin-top:8px"></div></div>
+        <div class="tool-card"><div class="name shimmer" style="height:16px;width:50%"></div><div class="desc shimmer" style="height:12px;width:85%;margin-top:8px"></div></div>
+        <div class="tool-card"><div class="name shimmer" style="height:16px;width:70%"></div><div class="desc shimmer" style="height:12px;width:75%;margin-top:8px"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ MEMORY TAB ═══ -->
+  <div class="tab-content" id="tab-memory">
+    <div class="memory-container">
+      <div class="memory-controls">
+        <input type="text" id="memorySearch" placeholder="Search memories..." onkeydown="if(event.key==='Enter') searchMemory()">
+        <button onclick="searchMemory()">Search</button>
+        <button class="sec" onclick="loadMemories()">All</button>
+      </div>
+      <div class="memory-controls">
+        <input type="text" id="memoryKey" placeholder="Key">
+        <input type="text" id="memoryValue" placeholder="Value">
+        <button onclick="saveMemory()">Save</button>
+      </div>
+      <div id="memoryList"><div class="memory-item"><div class="key">Loading...</div></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ NOTES TAB ═══ -->
+  <div class="tab-content" id="tab-notes">
+    <div class="notes-container">
+      <div class="memory-controls">
+        <button onclick="loadNotes()">Refresh</button>
+        <button class="sec" onclick="showNewNote()">New Note</button>
+      </div>
+      <div id="notesList"><div class="note-card"><div class="title">Loading notes...</div></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ MCP TAB ═══ -->
+  <div class="tab-content" id="tab-mcp">
+    <div class="mcp-container">
+      <h2 style="font-size:16px;margin-bottom:16px;color:var(--accent)">MCP Plugin Manager</h2>
+      <div class="mcp-card">
+        <h3>Connect MCP Server</h3>
+        <p>Connect to any Model Context Protocol server to extend OMEGA's capabilities.</p>
+        <div class="mcp-connect-form">
+          <input type="text" id="mcpName" placeholder="Connection name (e.g. github)">
+          <input type="text" id="mcpCommand" placeholder="Command (e.g. npx, python)">
+          <input type="text" id="mcpArgs" placeholder="Arguments">
+          <button onclick="connectMCP()">Connect</button>
+        </div>
+      </div>
+      <div id="mcpStatus">
+        <div class="mcp-card">
+          <h3>No MCP Servers Connected</h3>
+          <p style="font-size:13px;color:var(--text-muted)">Connect to MCP servers above to add custom tools.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ FILES TAB ═══ -->
+  <div class="tab-content" id="tab-files">
+    <div class="files-container">
+      <div class="files-sidebar">
+        <div class="dir-item" onclick="navigateTo('D:\\')">D:</div>
+        <div class="dir-item" onclick="navigateTo('D:\\TERMINALCLI')">TERMINALCLI</div>
+        <div class="dir-item" onclick="navigateTo('D:\\TERMINALCLI\\omega')" style="font-weight:600;color:var(--accent)">omega</div>
+        <div class="dir-item" onclick="navigateTo('C:\\')">C:</div>
+        <div class="dir-item" onclick="navigateTo('C:\\Users')">Users</div>
+      </div>
+      <div class="files-main">
+        <div class="files-toolbar">
+          <input class="path" id="filePath" value="D:\TERMINALCLI\omega" readonly>
+          <button onclick="refreshFiles()">Refresh</button>
+        </div>
+        <div class="files-list" id="filesList">
+          <div class="file-item">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SYSTEM TAB ═══ -->
+  <div class="tab-content" id="tab-system">
+    <div class="system-container">
+      <div class="sys-grid" id="sysGrid">
+        <div class="sys-card">
+          <h3>CPU</h3>
+          <div class="sys-stat"><span class="label">Usage</span><span class="value" id="cpuVal">-</span></div>
+          <div class="bar-container"><div class="bar-fill blue" id="cpuBar" style="width:0%"></div></div>
+          <div class="sys-stat"><span class="label">Cores</span><span class="value" id="cpuCores">-</span></div>
+        </div>
+        <div class="sys-card">
+          <h3>Memory</h3>
+          <div class="sys-stat"><span class="label">Usage</span><span class="value" id="ramVal">-</span></div>
+          <div class="bar-container"><div class="bar-fill yellow" id="ramBar" style="width:0%"></div></div>
+          <div class="sys-stat"><span class="label">Total</span><span class="value" id="ramTotal">-</span></div>
+        </div>
+        <div class="sys-card">
+          <h3>Disk</h3>
+          <div class="sys-stat"><span class="label">Usage</span><span class="value" id="diskVal">-</span></div>
+          <div class="bar-container"><div class="bar-fill green" id="diskBar" style="width:0%"></div></div>
+          <div class="sys-stat"><span class="label">Free</span><span class="value" id="diskFree">-</span></div>
+        </div>
+        <div class="sys-card">
+          <h3>OMEGA</h3>
+          <div class="sys-stat"><span class="label">Version</span><span class="value">1.0.0</span></div>
+          <div class="sys-stat"><span class="label">Tools</span><span class="value" id="toolCount">-</span></div>
+          <div class="sys-stat"><span class="label">Sessions</span><span class="value" id="sessionCount">0</span></div>
+          <div class="sys-stat"><span class="label">Uptime</span><span class="value" id="omegaUptime">-</span></div>
+        </div>
+      </div>
+      <div class="sys-card">
+        <h3>Top Processes</h3>
+        <div id="processList"><div class="sys-stat"><span class="label">Loading...</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SETTINGS TAB ═══ -->
+  <div class="tab-content" id="tab-settings">
+    <div class="settings-area">
+      <div class="sys-card" style="max-width:600px">
+        <h3>OMEGA Settings</h3>
+        <div class="sys-stat"><span class="label">AI Model</span><span class="value" id="settingsModel">-</span></div>
+        <div class="sys-stat"><span class="label">API Status</span><span class="value" id="settingsApi">-</span></div>
+        <div class="sys-stat"><span class="label">Core Module</span><span class="value" id="settingsCore">-</span></div>
+        <div class="sys-stat"><span class="label">Platform</span><span class="value" id="settingsPlatform">-</span></div>
+        <div class="sys-stat"><span class="label">Python</span><span class="value" id="settingsPython">-</span></div>
+        <div style="margin-top:16px;display:flex;gap:8px">
+          <button onclick="runDiagnostics()" style="background:var(--upgrade-bg);border:none;color:white;padding:8px 16px;border-radius:var(--radius);cursor:pointer">Run Diagnostics</button>
+          <button onclick="loadSettings()" style="background:var(--sidebar-hover);border:1px solid var(--border);color:var(--text-secondary);padding:8px 16px;border-radius:var(--radius);cursor:pointer">Refresh</button>
+        </div>
+        <div id="diagResult" style="margin-top:12px;font-size:12px;color:var(--text-secondary);font-family:var(--font-mono);white-space:pre-wrap"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="statusbar">
+  <div class="status-item">
+    <span class="dot green" id="statusDot"></span>
+    <span id="statusText">Connected</span>
+  </div>
+  <div class="status-item"><span id="statusCpu">CPU: -</span></div>
+  <div class="status-item"><span id="statusRam">RAM: -</span></div>
+  <div class="spacer"></div>
+  <div class="status-item"><span class="model" id="statusModel">Ω OMEGA</span></div>
+  <div class="status-item"><span id="statusTime">-</span></div>
+</div>
+
+<script>
+// ─── STATE ──
+const STATE = {
+  currentTab: 'chat',
+  chatHistory: [],
+  sessionId: 'default',
+  tools: [],
+  toolCount: 0,
+  messages: [],
+  isStreaming: false,
+  sidebarOpen: false,
+  settingsOpen: false,
+  sysInterval: null,
+  clockInterval: null,
+};
+
+// ─── API HELPERS ──
+async function apiGet(path) {
+  try { const r = await fetch(path); return await r.json(); }
+  catch(e) { return {error: e.message}; }
+}
+async function apiPost(path, data) {
+  try {
+    const r = await fetch(path, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data)
+    });
+    return await r.json();
+  } catch(e) { return {error: e.message}; }
+}
+
+// ─── SIDEBAR ──
+function toggleSidebar() {
+  STATE.sidebarOpen = !STATE.sidebarOpen;
+  document.getElementById('sidebar').classList.toggle('open', STATE.sidebarOpen);
+}
+
+// ─── SETTINGS POPUP ──
+function toggleSettings() {
+  STATE.settingsOpen = !STATE.settingsOpen;
+  document.getElementById('settingsPopup').classList.toggle('open', STATE.settingsOpen);
+}
+
+document.addEventListener('click', (e) => {
+  const popup = document.getElementById('settingsPopup');
+  if (STATE.settingsOpen && !e.target.closest('.settings-popup') && !e.target.closest('.user-avatar') && !e.target.closest('.topbar-settings-btn') && !e.target.closest('.rail-icon-btn[onclick*="toggleSettings"]')) {
+    STATE.settingsOpen = false;
+    popup.classList.remove('open');
+  }
+});
+
+// ─── TAB SWITCHING ──
+function switchTab(tab) {
+  STATE.currentTab = tab;
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.sidebar-nav-item').forEach(el => el.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  const navItem = document.querySelector(`.sidebar-nav-item[data-tab="${tab}"]`);
+  if (navItem) navItem.classList.add('active');
+  
+  // Update topbar title
+  const titles = {chat:'Chat', terminal:'Terminal', tools:'Tools', memory:'Memory', notes:'Notes', mcp:'MCP Plugins', files:'Files', system:'System', settings:'Settings'};
+  document.getElementById('topbarTitle').textContent = titles[tab] || tab;
+  
+  if (STATE.sidebarOpen) toggleSidebar();
+  
+  // Lazy load
+  if (tab === 'tools' && !STATE.tools.length) loadTools();
+  if (tab === 'memory') loadMemories();
+  if (tab === 'notes') loadNotes();
+  if (tab === 'system') refreshSystem();
+  if (tab === 'files') refreshFiles();
+  if (tab === 'settings') loadSettings();
+  
+  // Focus inputs
+  setTimeout(() => {
+    if (tab === 'chat') document.getElementById('chatInput').focus();
+    if (tab === 'terminal') document.getElementById('terminalInput').focus();
+  }, 150);
+}
+
+// ══════════════════════════════════════════════════════════════
+// CHAT
+// ══════════════════════════════════════════════════════════════
+
+function handleInput(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+  const hasText = el.value.trim().length > 0;
+  document.getElementById('sendBtn').classList.toggle('active', hasText);
+}
+
+function handleKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function newChat() {
+  STATE.messages = [];
+  document.getElementById('chatMessages').innerHTML = '';
+  document.getElementById('welcomeArea').style.display = 'flex';
+  document.getElementById('chatInput').value = '';
+  document.getElementById('sendBtn').classList.remove('active');
+  document.getElementById('thinkingIndicator').classList.remove('show');
+}
+
+function appendMessage(role, text) {
+  const container = document.getElementById('chatMessages');
+  const row = document.createElement('div');
+  row.className = `msg-row ${role}`;
+
+  if (role === 'ai') {
+    const avatar = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    avatar.setAttribute('viewBox', '0 0 28 28');
+    avatar.setAttribute('class', 'ai-avatar');
+    avatar.innerHTML = '<path d="M14 2C14 2 15.5 8.5 20 13C15.5 17.5 14 24 14 24C14 24 12.5 17.5 8 13C12.5 8.5 14 2 14 2Z" fill="url(#om)"/><defs><linearGradient id="om" x1="8" y1="2" x2="20" y2="24" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#00d4ff"/><stop offset="50%" stop-color="#0066ff"/><stop offset="100%" stop-color="#a855f7"/></linearGradient></defs>';
+    row.appendChild(avatar);
+  }
+
+  const bubble = document.createElement('div');
+  bubble.className = `msg-bubble ${role}`;
+  bubble.textContent = text;
+  row.appendChild(bubble);
+  container.appendChild(row);
+  container.scrollTop = container.scrollHeight;
+}
+
+function appendTyping() {
+  const container = document.getElementById('chatMessages');
+  const id = 'typing-' + Date.now();
+  const row = document.createElement('div');
+  row.className = 'msg-row ai';
+  row.id = id;
+
+  const avatar = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  avatar.setAttribute('viewBox', '0 0 28 28');
+  avatar.setAttribute('class', 'ai-avatar');
+  avatar.innerHTML = '<path d="M14 2C14 2 15.5 8.5 20 13C15.5 17.5 14 24 14 24C14 24 12.5 17.5 8 13C12.5 8.5 14 2 14 2Z" fill="url(#ot)"/><defs><linearGradient id="ot" x1="8" y1="2" x2="20" y2="24" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#00d4ff"/><stop offset="50%" stop-color="#0066ff"/><stop offset="100%" stop-color="#a855f7"/></linearGradient></defs>';
+  row.appendChild(avatar);
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble ai';
+  bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+  row.appendChild(bubble);
+  container.appendChild(row);
+  container.scrollTop = container.scrollHeight;
+  return id;
+}
+
+function removeTyping(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || STATE.isStreaming) return;
+
+  document.getElementById('welcomeArea').style.display = 'none';
+  
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('sendBtn').classList.remove('active');
+
+  STATE.messages.push({ role: 'user', content: text });
+  appendMessage('user', text);
+
+  const typingId = appendTyping();
+  STATE.isStreaming = true;
+  document.getElementById('thinkingIndicator').classList.add('show');
+
+  try {
+    const resp = await apiPost('/api/chat', {
+      message: text,
+      session_id: STATE.sessionId
+    });
+
+    document.getElementById('thinkingIndicator').classList.remove('show');
+    removeTyping(typingId);
+    STATE.isStreaming = false;
+
+    if (resp.success) {
+      STATE.messages.push({ role: 'assistant', content: resp.response });
+      appendMessage('ai', resp.response);
+      
+      // Add to recent
+      updateRecentChats(text);
+    } else {
+      appendMessage('ai', 'Error: ' + (resp.error || 'Unknown error'));
+    }
+  } catch(e) {
+    document.getElementById('thinkingIndicator').classList.remove('show');
+    removeTyping(typingId);
+    STATE.isStreaming = false;
+    appendMessage('ai', 'Network error: ' + e.message);
+  }
+  
+  input.focus();
+}
+
+let chatCounter = 0;
+function updateRecentChats(text) {
+  chatCounter++;
+  const container = document.getElementById('recentChats');
+  const truncated = text.length > 35 ? text.slice(0, 35) + '...' : text;
+  const item = document.createElement('div');
+  item.className = 'sidebar-recent-item';
+  item.textContent = truncated;
+  item.onclick = () => loadChat(chatCounter);
+  if (container.firstChild) {
+    container.insertBefore(item, container.firstChild);
+  } else {
+    container.appendChild(item);
+  }
+  // Keep max 10
+  while (container.children.length > 10) {
+    container.removeChild(container.lastChild);
+  }
+}
+
+function loadChat(id) {
+  switchTab('chat');
+}
+
+// ══════════════════════════════════════════════════════════════
+// TERMINAL
+// ══════════════════════════════════════════════════════════════
+
+async function handleTerminalKey(e) {
+  if (e.key === 'Enter') {
+    const input = document.getElementById('terminalInput');
+    const cmd = input.value.trim();
+    if (!cmd) return;
+    
+    const output = document.getElementById('terminalOutput');
+    output.innerHTML += '<div class="line prompt">PS Ω> ' + escapeHtml(cmd) + '</div>';
+    input.value = '';
+    input.disabled = true;
+    
+    try {
+      const resp = await apiPost('/api/exec', {cmd, timeout: 60});
+      if (resp.stdout) output.innerHTML += '<div class="line output">' + escapeHtml(resp.stdout) + '</div>';
+      if (resp.stderr) output.innerHTML += '<div class="line error">' + escapeHtml(resp.stderr) + '</div>';
+      if (resp.error) output.innerHTML += '<div class="line error">Error: ' + escapeHtml(resp.error) + '</div>';
+      output.innerHTML += '<div class="line system">Exit code: ' + resp.exit_code + (resp.exit_code === 0 ? ' OK' : '') + '</div>';
+    } catch(e) {
+      output.innerHTML += '<div class="line error">Network error: ' + escapeHtml(e.message) + '</div>';
+    }
+    
+    input.disabled = false;
+    input.focus();
+    output.scrollTop = output.scrollHeight;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// TOOLS
+// ══════════════════════════════════════════════════════════════
+
+async function loadTools() {
+  const grid = document.getElementById('toolsGrid');
+  
+  const data = await apiGet('/api/tools');
+  if (data.tools) {
+    STATE.tools = data.tools;
+    STATE.toolCount = data.total || data.tools.length;
+    document.getElementById('toolsBadge').textContent = STATE.toolCount;
+    document.getElementById('welcomeTools').textContent = STATE.toolCount + ' tools';
+    renderTools(data.tools);
+  } else {
+    grid.innerHTML = '<div class="tool-card"><div class="name">Error</div><div class="desc">Could not load tools from server</div></div>';
+  }
+}
+
+function renderTools(tools) {
+  const grid = document.getElementById('toolsGrid');
+  if (!tools.length) {
+    grid.innerHTML = '<div class="tool-card"><div class="name">No tools found</div><div class="desc">The tool list is empty</div></div>';
+    return;
+  }
+  grid.innerHTML = tools.map(t => 
+    '<div class="tool-card" onclick="useTool(\'' + escapeHtml(t.name) + '\')">' +
+      '<div class="name">' + escapeHtml(t.name) + '</div>' +
+      '<div class="desc">' + escapeHtml((t.description || 'No description').slice(0, 120)) + '</div>' +
+    '</div>'
+  ).join('');
+}
+
+function filterTools() {
+  const q = document.getElementById('toolsSearch').value.toLowerCase();
+  const filtered = STATE.tools.filter(t => 
+    t.name.toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q)
+  );
+  renderTools(filtered);
+}
+
+function useTool(name) {
+  switchTab('chat');
+  document.getElementById('chatInput').value = 'Tell me about the ' + name + ' tool and how to use it';
+  sendMessage();
+}
+
+// ══════════════════════════════════════════════════════════════
+// MEMORY
+// ══════════════════════════════════════════════════════════════
+
+async function loadMemories() {
+  const list = document.getElementById('memoryList');
+  list.innerHTML = '<div class="memory-item"><div class="key">Loading...</div></div>';
+  
+  const data = await apiGet('/api/memories');
+  if (data.memories) {
+    if (data.memories.length === 0) {
+      list.innerHTML = '<div class="memory-item"><div class="key">No memories saved</div><div class="value">Use the form above to save a memory.</div></div>';
+    } else {
+      list.innerHTML = data.memories.map(m => 
+        '<div class="memory-item">' +
+          '<button class="del-btn" onclick="deleteMemory(\'' + escapeHtml(m.key) + '\')">✕</button>' +
+          '<div class="key">' + escapeHtml(m.key) + '</div>' +
+          '<div class="value">' + escapeHtml((m.value || '').slice(0, 300)) + '</div>' +
+        '</div>'
+      ).join('');
+    }
+  } else {
+    list.innerHTML = '<div class="memory-item"><div class="key">Error loading memories</div></div>';
+  }
+}
+
+async function searchMemory() {
+  const q = document.getElementById('memorySearch').value.trim();
+  const list = document.getElementById('memoryList');
+  if (!q) { loadMemories(); return; }
+  
+  list.innerHTML = '<div class="memory-item"><div class="key">Searching...</div></div>';
+  const data = await apiPost('/api/memory/search', {query: q});
+  
+  if (data.results) {
+    const items = Array.isArray(data.results) ? data.results : [data.results];
+    list.innerHTML = items.map(r => 
+      '<div class="memory-item"><div class="key">' + escapeHtml(r.key || r.title || 'Result') + '</div><div class="value">' + escapeHtml(typeof r === 'string' ? r.slice(0, 300) : JSON.stringify(r).slice(0, 300)) + '</div></div>'
+    ).join('') || '<div class="memory-item"><div class="key">No results</div></div>';
+  }
+}
+
+async function saveMemory() {
+  const key = document.getElementById('memoryKey').value.trim();
+  const value = document.getElementById('memoryValue').value.trim();
+  if (!key || !value) { alert('Enter both key and value'); return; }
+  
+  const resp = await apiPost('/api/memory/save', {key, value});
+  if (resp.success) {
+    document.getElementById('memoryKey').value = '';
+    document.getElementById('memoryValue').value = '';
+    loadMemories();
+  } else {
+    alert('Error: ' + (resp.error || 'unknown'));
+  }
+}
+
+async function deleteMemory(key) {
+  if (!confirm('Delete memory "' + key + '"?')) return;
+  await apiPost('/api/memory/delete', {key});
+  loadMemories();
+}
+
+// ══════════════════════════════════════════════════════════════
+// NOTES
+// ══════════════════════════════════════════════════════════════
+
+async function loadNotes() {
+  const list = document.getElementById('notesList');
+  list.innerHTML = '<div class="note-card"><div class="title">Loading...</div></div>';
+  
+  const data = await apiGet('/api/notes');
+  if (data.notes) {
+    if (data.notes.length === 0) {
+      list.innerHTML = '<div class="note-card"><div class="title">No notes saved</div></div>';
+    } else {
+      list.innerHTML = data.notes.map(n => 
+        '<div class="note-card" onclick="viewNote(\'' + escapeHtml(n.title) + '\')">' +
+          '<div class="title">' + escapeHtml(n.title) + '</div>' +
+          '<div>' + (n.tags || []).map(t => '<span class="tag">' + escapeHtml(t) + '</span>').join('') + '</div>' +
+          '<div class="date">' + (n.created || '') + '</div>' +
+        '</div>'
+      ).join('');
+    }
+  }
+}
+
+async function viewNote(title) {
+  const data = await apiGet('/api/note/' + encodeURIComponent(title));
+  if (data.note) {
+    const content = typeof data.note === 'string' ? data.note : (data.note.content || JSON.stringify(data.note));
+    switchTab('chat');
+    document.getElementById('welcomeArea').style.display = 'none';
+    appendMessage('user', 'Note: ' + title);
+    appendMessage('ai', title + '\n\n' + content.slice(0, 2000));
+  }
+}
+
+function showNewNote() {
+  const title = prompt('Note title:');
+  if (!title) return;
+  const content = prompt('Note content:');
+  if (!content) return;
+  
+  apiPost('/api/note/save', {title, content, tags: ['desktop']}).then(r => {
+    if (r.success) loadNotes();
+    else alert('Error: ' + (r.error || 'unknown'));
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// MCP
+// ══════════════════════════════════════════════════════════════
+
+async function connectMCP() {
+  const name = document.getElementById('mcpName').value.trim();
+  const cmd = document.getElementById('mcpCommand').value.trim();
+  const args = document.getElementById('mcpArgs').value.trim();
+  if (!name || !cmd) { alert('Connection name and command required'); return; }
+  
+  const resp = await apiPost('/api/mcp/connect', {name, command: cmd, args: args});
+  if (resp.success) {
+    document.getElementById('mcpStatus').innerHTML = 
+      '<div class="mcp-card"><h3>' + escapeHtml(name) + '</h3>' +
+      '<span class="status connected">Connected</span>' +
+      '<div class="tool-list">' + escapeHtml(cmd) + ' ' + escapeHtml(args) + '</div></div>';
+  } else {
+    alert(resp.message || resp.error || 'Connection failed (MCP server may not be implemented)');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// FILES
+// ══════════════════════════════════════════════════════════════
+
+async function navigateTo(path) {
+  document.getElementById('filePath').value = path;
+  const list = document.getElementById('filesList');
+  list.innerHTML = '<div class="file-item">Loading...</div>';
+  
+  const data = await apiGet('/api/cwd/' + encodeURIComponent(path));
+  if (data.success === false) {
+    list.innerHTML = '<div class="file-item" style="color:var(--error)">Error: ' + escapeHtml(data.error || 'unknown') + '</div>';
+  } else if (typeof data.content === 'string') {
+    // If it's raw HTML content from list_dir
+    list.innerHTML = data.content;
+  } else {
+    list.innerHTML = '<div class="file-item">No files to display</div>';
+  }
+}
+
+async function refreshFiles() {
+  const path = document.getElementById('filePath').value;
+  navigateTo(path);
+}
+
+// ══════════════════════════════════════════════════════════════
+// SYSTEM
+// ══════════════════════════════════════════════════════════════
+
+async function refreshSystem() {
+  const data = await apiGet('/api/system');
+  if (data.cpu !== undefined) {
+    document.getElementById('cpuVal').textContent = data.cpu.toFixed(1) + '%';
+    document.getElementById('cpuBar').style.width = data.cpu + '%';
+    document.getElementById('cpuCores').textContent = data.cpu_cores || '-';
+    
+    const ramPct = data.ram_percent || 0;
+    document.getElementById('ramVal').textContent = ramPct.toFixed(1) + '%';
+    document.getElementById('ramBar').style.width = ramPct + '%';
+    document.getElementById('ramBar').className = 'bar-fill ' + (ramPct > 85 ? 'red' : ramPct > 70 ? 'yellow' : 'green');
+    document.getElementById('ramTotal').textContent = formatBytes(data.ram_total || 0);
+    
+    const diskPct = data.disk_percent || 0;
+    document.getElementById('diskVal').textContent = diskPct.toFixed(1) + '%';
+    document.getElementById('diskBar').style.width = diskPct + '%';
+    document.getElementById('diskBar').className = 'bar-fill ' + (diskPct > 90 ? 'red' : diskPct > 75 ? 'yellow' : 'green');
+    document.getElementById('diskFree').textContent = formatBytes(data.disk_free || 0);
+    
+    // Status bar
+    document.getElementById('statusCpu').textContent = 'CPU: ' + data.cpu.toFixed(0) + '%';
+    document.getElementById('statusRam').textContent = 'RAM: ' + ramPct.toFixed(0) + '%';
+  }
+  
+  const procData = await apiGet('/api/processes');
+  if (procData.processes) {
+    const list = document.getElementById('processList');
+    list.innerHTML = procData.processes.slice(0, 15).map(p => 
+      '<div class="sys-stat"><span class="label">' + escapeHtml(p.name || '?') + '</span><span class="value">' + 
+      (p.cpu_percent || 0).toFixed(1) + '% | ' + (p.memory_percent || 0).toFixed(1) + '%</span></div>'
+    ).join('');
+  }
+  
+  const status = await apiGet('/api/status');
+  if (status.omega_core !== undefined) {
+    document.getElementById('toolCount').textContent = status.tools_count || '?';
+    document.getElementById('sessionCount').textContent = status.sessions || 0;
+    document.getElementById('statusModel').textContent = 'OMEGA ' + (status.model || '');
+    document.getElementById('settingsModel').textContent = status.model || '-';
+    document.getElementById('settingsApi').textContent = status.api_connected ? 'Connected' : 'Disconnected';
+    document.getElementById('settingsCore').textContent = status.omega_core ? 'Loaded' : 'Not loaded';
+    document.getElementById('settingsPlatform').textContent = status.platform || '-';
+    document.getElementById('settingsPython').textContent = (status.python || '').split('|')[0].trim() || '-';
+    if (status.uptime) document.getElementById('omegaUptime').textContent = formatUptime(status.uptime);
+    if (status.tools_count) document.getElementById('popupModel').textContent = status.tools_count + ' tools loaded';
+    document.getElementById('welcomeStatus').textContent = status.api_connected ? 'Online' : 'Offline';
+  }
+}
+
+async function runDiagnostics() {
+  const div = document.getElementById('diagResult');
+  div.textContent = 'Running diagnostics...';
+  const data = await apiGet('/api/diagnostics');
+  div.textContent = typeof data.diagnostics === 'string' ? data.diagnostics.slice(0, 3000) : JSON.stringify(data.diagnostics, null, 2).slice(0, 3000);
+}
+
+async function loadSettings() {
+  const status = await apiGet('/api/status');
+  if (status.omega_core !== undefined) {
+    document.getElementById('settingsModel').textContent = status.model || '-';
+    document.getElementById('settingsApi').textContent = status.api_connected ? 'Connected' : 'Disconnected';
+    document.getElementById('settingsCore').textContent = status.omega_core ? 'Loaded' : 'Not loaded';
+    document.getElementById('settingsPlatform').textContent = status.platform || '-';
+    document.getElementById('settingsPython').textContent = (status.python || '').split('|')[0].trim() || '-';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════════════════════
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 B';
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
+}
+
+function formatUptime(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  return h + 'h ' + m + 'm ' + s + 's';
+}
+
+function escapeHtml(t) {
+  if (typeof t !== 'string') return String(t);
+  const d = document.createElement('div');
+  d.textContent = t;
+  return d.innerHTML;
+}
+
+function updateClock() {
+  document.getElementById('statusTime').textContent = new Date().toLocaleTimeString();
+}
+
+// ══════════════════════════════════════════════════════════════
+// HOTKEYS
+// ══════════════════════════════════════════════════════════════
+
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.key === '`') { e.preventDefault(); switchTab('terminal'); }
+  if (e.ctrlKey && e.key === '1') { e.preventDefault(); switchTab('chat'); }
+  if (e.ctrlKey && e.key === '2') { e.preventDefault(); switchTab('terminal'); }
+  if (e.ctrlKey && e.key === '3') { e.preventDefault(); switchTab('tools'); }
+  if (e.ctrlKey && e.key === '4') { e.preventDefault(); switchTab('system'); }
+  if (e.ctrlKey && e.key === 'b') { e.preventDefault(); toggleSidebar(); }
+});
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+
+document.addEventListener('DOMContentLoaded', function() {
+  STATE.sysInterval = setInterval(refreshSystem, 5000);
+  STATE.clockInterval = setInterval(updateClock, 1000);
+  
+  refreshSystem();
+  updateClock();
+  loadTools();
+  
+  document.getElementById('chatInput').focus();
+  
+  // Tab switch focus
+  document.querySelectorAll('.sidebar-nav-item').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const tab = this.getAttribute('data-tab');
+      setTimeout(() => {
+        if (tab === 'terminal') document.getElementById('terminalInput').focus();
+        if (tab === 'chat') document.getElementById('chatInput').focus();
+      }, 150);
+    });
+  });
+});
+
+window.onerror = function(msg, url, line) {
+  console.error('OMEGA Error:', msg, 'at', line);
+};
+</script>
+</body>
+</html>

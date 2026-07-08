@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>__SITE_NAME__ — Digital Experience</title>
+__FONT_CSS__
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;overflow-x:hidden;}
+body{font-family:'__FONT_FAMILY__',-apple-system,sans-serif;background:__BG__;color:__TC__;-webkit-font-smoothing:antialiased;}
+#three-canvas{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0;pointer-events:none;}
+nav{position:fixed;top:0;width:100%;z-index:1000;padding:20px 50px;display:flex;justify-content:space-between;align-items:center;backdrop-filter:blur(20px);background:rgba(10,10,15,0.3);border-bottom:1px solid __BO__;transition:all 0.4s;}
+nav.scrolled{background:rgba(10,10,15,0.85);padding:12px 50px;}
+.logo{font-size:28px;font-weight:800;background:linear-gradient(135deg,__A1__,__A2__);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.nav-links{display:flex;gap:35px;list-style:none;}
+.nav-links a{color:__TC__;text-decoration:none;font-size:14px;font-weight:500;letter-spacing:2px;text-transform:uppercase;opacity:0.7;transition:all 0.3s;position:relative;}
+.nav-links a::after{content:'';position:absolute;bottom:-4px;left:0;width:0;height:2px;background:__A1__;transition:width 0.3s;}
+.nav-links a:hover{opacity:1;}
+.nav-links a:hover::after{width:100%;}
+section{position:relative;z-index:1;min-height:100vh;overflow:hidden;display:flex;flex-direction:column;justify-content:center;}
+.hero-content{text-align:center;z-index:2;padding:40px;max-width:1200px;margin:0 auto;}
+.hero-badge{display:inline-block;padding:8px 24px;border:1px solid __BO__;border-radius:50px;font-size:12px;letter-spacing:3px;text-transform:uppercase;background:__CB__;backdrop-filter:blur(10px);margin-bottom:30px;}
+.hero-title{font-size:clamp(60px,12vw,160px);font-weight:900;line-height:0.95;letter-spacing:-4px;margin-bottom:30px;}
+.gradient-text{background:linear-gradient(135deg,__A1__,__A2__,__A3__);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.hero-subtitle{font-size:clamp(18px,2vw,28px);opacity:0.6;font-weight:300;max-width:600px;margin:0 auto 40px;}
+.btn-primary{padding:16px 40px;background:linear-gradient(135deg,__A1__,__A2__);border:none;border-radius:50px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.3s;text-decoration:none;display:inline-block;}
+.btn-primary:hover{transform:scale(1.05);box-shadow:0 20px 60px rgba(108,92,231,0.3);}
+.btn-secondary{padding:16px 40px;background:transparent;border:1px solid __BO__;border-radius:50px;color:__TC__;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.3s;text-decoration:none;display:inline-block;backdrop-filter:blur(10px);}
+.btn-secondary:hover{border-color:__A1__;}
+.showcase-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:30px;max-width:1400px;margin:0 auto;padding:0 50px;}
+.showcase-card{background:__CB__;border:1px solid __BO__;border-radius:20px;padding:40px;backdrop-filter:blur(10px);transition:all 0.5s;}
+.showcase-card:hover{transform:translateY(-10px);border-color:__A1__40;}
+.card-number{font-size:48px;font-weight:900;opacity:0.05;}
+.card-title{font-size:24px;font-weight:700;margin:15px 0;}
+.card-desc{font-size:15px;opacity:0.6;line-height:1.8;}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:60px;max-width:1000px;margin:0 auto;text-align:center;padding:0 50px;}
+.stat-number{font-size:clamp(50px,8vw,100px);font-weight:900;background:linear-gradient(135deg,__A1__,__A2__);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.stat-label{font-size:14px;letter-spacing:3px;text-transform:uppercase;opacity:0.4;margin-top:10px;}
+.contact-form{max-width:600px;margin:0 auto;padding:0 50px;}
+.form-group{margin-bottom:20px;}
+.form-group input,.form-group textarea{width:100%;padding:18px 24px;background:__CB__;border:1px solid __BO__;border-radius:12px;color:__TC__;font-size:16px;outline:none;font-family:inherit;transition:all 0.3s;}
+.form-group input:focus,.form-group textarea:focus{border-color:__A1__;box-shadow:0 0 0 4px __A1__20;}
+.form-group textarea{min-height:150px;resize:vertical;}
+footer{text-align:center;padding:40px;border-top:1px solid __BO__;opacity:0.4;font-size:14px;}
+.reveal{opacity:0;transform:translateY(60px);transition:all 0.8s cubic-bezier(0.16,1,0.3,1);}
+.reveal.visible{opacity:1;transform:translateY(0);}
+#glow{position:fixed;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,__A1__08 0%,transparent 70%);pointer-events:none;z-index:0;transform:translate(-50%,-50%);}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:768px){nav{padding:15px 20px;}.nav-links a{font-size:11px;}.showcase-grid,.stats-grid,.contact-form{padding:0 20px;}}
+</style>
+</head>
+<body>
+<div id="three-canvas"></div>
+<div id="glow"></div>
+<nav id="nav">
+<div class="logo">__SITE_NAME__</div>
+<ul class="nav-links">
+<li><a href="#hero">Home</a></li><li><a href="#showcase">Work</a></li>
+<li><a href="#stats">Stats</a></li><li><a href="#contact">Contact</a></li>
+</ul>
+</nav>
+<section style="min-height:100vh;display:flex;align-items:center;justify-content:center;">
+<div class="hero-content">
+<div class="hero-badge" style="animation:fadeInUp 1s 0.2s both;">&#9827; Digital Experience Studio</div>
+<h1 class="hero-title" style="animation:fadeInUp 1s 0.4s both;">
+<span style="display:block;">Crafting the</span>
+<span style="display:block;"><span class="gradient-text">Future</span> of</span>
+<span style="display:block;">Digital Design</span>
+</h1>
+<p class="hero-subtitle" style="animation:fadeInUp 1s 0.6s both;">We create immersive 3D web experiences that push boundaries.</p>
+<div class="hero-cta" style="animation:fadeInUp 1s 0.8s both;">
+<a href="#showcase" class="btn-primary">Explore Our Work</a>
+<a href="#contact" class="btn-secondary">Get In Touch</a>
+</div>
+</div>
+<div style="position:absolute;bottom:40px;left:50%;transform:translateX(-50%);text-align:center;opacity:0.5;">
+<span style="font-size:10px;letter-spacing:3px;text-transform:uppercase;">Scroll</span>
+<div style="width:1px;height:60px;margin:10px auto;background:linear-gradient(to bottom,__TC__,transparent);"></div>
+</div>
+</section>
+<section id="showcase">
+<div class="section-header" style="text-align:center;padding:100px 50px 50px;">
+<div class="section-tag" style="font-size:12px;letter-spacing:4px;text-transform:uppercase;color:__A1__;">&#8226; Featured Work</div>
+<h2 class="section-title" style="font-size:clamp(40px,6vw,80px);font-weight:800;">Digital Experiences</h2>
+<p class="section-desc" style="font-size:18px;opacity:0.5;max-width:600px;margin:20px auto;">Every project blends 3D artistry with performance.</p>
+</div>
+<div class="showcase-grid">
+__CARDS__
+</div>
+</section>
+<section id="stats">
+<div style="text-align:center;padding:100px 50px 50px;">
+<div style="font-size:12px;letter-spacing:4px;text-transform:uppercase;color:__A1__;">&#8226; By The Numbers</div>
+<h2 style="font-size:clamp(40px,6vw,80px);font-weight:800;">Our Impact</h2>
+</div>
+<div class="stats-grid">
+__STATS__
+</div>
+</section>
+<section id="contact">
+<div style="text-align:center;padding:100px 50px 50px;">
+<div style="font-size:12px;letter-spacing:4px;text-transform:uppercase;color:__A1__;">&#8226; Let us Create</div>
+<h2 style="font-size:clamp(40px,6vw,80px);font-weight:800;">Start Your Project</h2>
+<p style="font-size:18px;opacity:0.5;">Ready to build something extraordinary?</p>
+</div>
+<form class="contact-form" onsubmit="return false;">
+<div class="form-group"><input type="text" placeholder="Your Name" required></div>
+<div class="form-group"><input type="email" placeholder="Your Email" required></div>
+<div class="form-group"><textarea placeholder="Tell us about your vision..." required></textarea></div>
+<button type="submit" class="btn-primary" style="width:100%" onclick="this.textContent='Sent!';setTimeout(()=>this.textContent='Send Message',2000)">Send Message</button>
+</form>
+</section>
+<footer><p>&copy; 2026 __SITE_NAME__. Crafted with precision.</p></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+__TERRAIN_CODE__
+__SCULPTURE_CODE__
+__PARTICLE_CODE__
+const c=document.getElementById('three-canvas');
+const s=new THREE.Scene(); s.fog=new THREE.FogExp2(0x0a0a0f,0.035);
+const cam=new THREE.PerspectiveCamera(60,window.innerWidth/window.innerHeight,0.1,100); cam.position.set(0,2,8);
+const r=new THREE.WebGLRenderer({alpha:true,antialias:true,powerPreference:"high-performance"});
+r.setSize(window.innerWidth,window.innerHeight); r.setPixelRatio(Math.min(window.devicePixelRatio,2));
+r.toneMapping=THREE.ACESFilmicToneMapping; r.toneMappingExposure=1.2; c.appendChild(r.domElement);
+new THREE.AmbientLight(0x404040,0.5)|>s;
+const ml=new THREE.DirectionalLight(0xffffff,1.5); ml.position.set(5,10,7); s.add(ml);
+const fl=new THREE.DirectionalLight(0x6c5ce7,0.5); fl.position.set(-5,0,5); s.add(fl);
+const rl=new THREE.DirectionalLight(0x00cec9,0.3); rl.position.set(0,-5,-5); s.add(rl);
+const t=createTerrain(); t.position.y=-1; t.scale.set(0.5,0.5,0.5); s.add(t);
+const sc_=createSculpture(); sc_.position.set(2,0.5,-2); sc_.scale.set(0.6,0.6,0.6); s.add(sc_);
+const pt=createParticles(); pt.position.set(0,0,-3); s.add(pt);
+const sg=new THREE.BufferGeometry(); const sp=new Float32Array(6000);
+for(let i=0;i<6000;i++){sp[i]=(Math.random()-0.5)*100;}
+sg.setAttribute('position',new THREE.BufferAttribute(sp,3));
+const st=new THREE.Points(sg,new THREE.PointsMaterial({color:0xffffff,size:0.05,transparent:true,opacity:0.6,blending:THREE.AdditiveBlending,sizeAttenuation:true}));
+st.position.y=-10; s.add(st);
+let mx=0,my=0,sp_=0;
+document.addEventListener('mousemove',e=>{mx=(e.clientX/innerWidth)*2-1;my=-(e.clientY/innerHeight)*2+1;document.getElementById('glow').style.left=e.clientX+'px';document.getElementById('glow').style.top=e.clientY+'px';});
+window.addEventListener('scroll',()=>{const sy=scrollY;const m=document.documentElement.scrollHeight-innerHeight;sp_=m>0?sy/m:0;const n=document.getElementById('nav');if(sy>50)n.classList.add('scrolled');else n.classList.remove('scrolled');document.querySelectorAll('.reveal').forEach(el=>{if(el.getBoundingClientRect().top<innerHeight*0.85)el.classList.add('visible');});});
+document.querySelectorAll('.stat-number').forEach(c=>{const t=parseFloat(c.dataset.target),d=2000,st=performance.now();(function u(ct){const e=ct-st,p=Math.min(e/d,1),v=1-Math.pow(1-p,3);c.textContent=t%1===0?Math.floor(v*t):(v*t).toFixed(1);if(p<1)requestAnimationFrame(u);})(performance.now());});
+let time=0;
+(function a(){requestAnimationFrame(a);time+=0.01;t.rotation.y+=0.001;t.rotation.x=Math.sin(time*0.3)*0.1;sc_.rotation.x=Math.sin(time*0.5)*0.2;sc_.rotation.y+=0.005;sc_.position.y=0.5+Math.sin(time*0.7)*0.2;const pp=pt.geometry.attributes.position.array;for(let i=1;i<pp.length;i+=3){pp[i]+=Math.sin(time+pp[i-1]*0.5)*0.002;pp[i-1]+=Math.cos(time+pp[i]*0.5)*0.002;}pt.geometry.attributes.position.needsUpdate=true;st.rotation.y+=0.0002;cam.position.y+=(sp_*3-cam.position.y)*0.03;cam.position.z+=(8-sp_*4-cam.position.z)*0.03;cam.position.x+=(mx*0.5-cam.position.x)*0.02;cam.lookAt(0,0,0);r.toneMappingExposure=1.2-sp_*0.4;r.render(s,cam);})();
+window.addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();r.setSize(innerWidth,innerHeight);});
+document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',function(e){e.preventDefault();const t=document.querySelector(this.getAttribute('href'));if(t)t.scrollIntoView({behavior:'smooth',block:'start'});}));
+setTimeout(()=>dispatchEvent(new Event('scroll')),200);
+console.log('__SITE_NAME__ -- OMEGA Elite | Seed: __SEED__');
+</script>
+</body>
+</html>
