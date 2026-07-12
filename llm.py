@@ -2,34 +2,34 @@
 """OMEGA LLM Client — Resilient API client with retry, token tracking, and streaming."""
 
 import json
-import time
 import random
-import requests
+import time
+from collections.abc import Generator
 from datetime import datetime
+
+import requests
+
+from config import Config
 
 
 class LLMError(Exception):
     """Base LLM exception."""
-    pass
 
 
 class LLMRetryError(LLMError):
     """Max retries exceeded."""
-    pass
 
 
 class LLMAuthError(LLMError):
     """Authentication/authorization error."""
-    pass
 
 
 class LLMRateLimitError(LLMError):
     """Rate limited by API."""
-    pass
 
 
 class LLMClient:
-    def __init__(self, config):
+    def __init__(self, config: Config) -> None:
         self.config = config
         self.session = requests.Session()
         self.session.headers.update({
@@ -42,7 +42,7 @@ class LLMClient:
         self.total_cost_estimate = 0.0
         self._last_request_time = 0.0
 
-    def _rate_limit_wait(self):
+    def _rate_limit_wait(self) -> None:
         """Ensure minimum delay between requests to avoid rate limiting."""
         now = time.time()
         elapsed = now - self._last_request_time
@@ -51,7 +51,7 @@ class LLMClient:
             time.sleep(min_delay - elapsed)
         self._last_request_time = time.time()
 
-    def chat(self, messages, tools=None, stream=True, max_retries=3):
+    def chat(self, messages: list[dict], tools: list[dict] | None = None, stream: bool = True, max_retries: int = 3) -> dict | Generator:
         """Send chat completion request with retry logic."""
         url = f"{self.config.base_url}/chat/completions"
         payload = {
@@ -133,7 +133,7 @@ class LLMClient:
 
         raise LLMRetryError(f"Failed after {max_retries} retries. Last error: {last_error}")
 
-    def _handle_response(self, response):
+    def _handle_response(self, response: requests.Response) -> dict:
         """Handle non-streaming response."""
         data = response.json()
         choice = data["choices"][0]
@@ -167,7 +167,7 @@ class LLMClient:
             "finish_reason": choice.get("finish_reason", "stop"),
         }
 
-    def _handle_stream(self, response):
+    def _handle_stream(self, response: requests.Response) -> Generator[tuple[str, str | list], None, None]:
         """Handle streaming response, yielding events."""
         collected_content = ""
         tool_calls = {}
@@ -233,7 +233,7 @@ class LLMClient:
         else:
             yield ("done", collected_content)
 
-    def count_tokens(self, messages):
+    def count_tokens(self, messages: list[dict]) -> int:
         """Estimate token count for messages."""
         try:
             url = f"{self.config.base_url}/chat/completions"
@@ -252,7 +252,7 @@ class LLMClient:
             pass
         return sum(len(str(m)) // 4 for m in messages)
 
-    def get_token_stats(self):
+    def get_token_stats(self) -> dict:
         """Get token usage statistics."""
         return {
             "prompt_tokens": self.total_prompt_tokens,

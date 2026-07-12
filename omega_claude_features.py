@@ -117,11 +117,11 @@ class HooksSystem:
     Each hook is a shell command or Python callable that runs at the trigger point.
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         self._hooks = {}  # event_type -> list of Hook objects
         self._load()
     
-    def register(self, event: str, action: str, name: str = "", condition: str = ""):
+    def register(self, event: str, action: str, name: str = "", condition: str = "") -> None:
         """Register a hook.
         
         Args:
@@ -149,7 +149,7 @@ class HooksSystem:
         self._save()
         return {"success": True, "hook": hook}
     
-    def unregister(self, name: str):
+    def unregister(self, name: str) -> None:
         """Remove a hook by name."""
         for event in list(self._hooks.keys()):
             self._hooks[event] = [h for h in self._hooks[event] if h["name"] != name]
@@ -268,7 +268,7 @@ class HooksSystem:
             return val in ctx_val
         return True
     
-    def _save(self):
+    def _save(self) -> None:
         """Save hooks to disk."""
         try:
             HOOKS_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -277,7 +277,7 @@ class HooksSystem:
         except Exception:
             pass
     
-    def _load(self):
+    def _load(self) -> None:
         """Load hooks from disk."""
         try:
             if HOOKS_FILE.exists():
@@ -309,7 +309,7 @@ class SubAgent:
     and merges their results.
     """
     
-    def __init__(self, agent_id: str, task: str, context: Dict = None):
+    def __init__(self, agent_id: str, task: str, context: Dict = None) -> None:
         self.id = agent_id
         self.task = task
         self.context = context or {}
@@ -320,14 +320,14 @@ class SubAgent:
         self.end_time = None
         self._thread = None
     
-    def run(self):
+    def run(self) -> None:
         """Execute the sub-agent task."""
         self.status = "running"
         self.start_time = time.time()
         self._thread = threading.Thread(target=self._execute, daemon=True)
         self._thread.start()
     
-    def _execute(self):
+    def _execute(self) -> None:
         """Internal execution logic."""
         try:
             # Sub-agent execution: runs a sequence of operations
@@ -443,7 +443,7 @@ class SubAgent:
 class SubAgentManager:
     """Manages spawning and coordinating sub-agents."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self._agents: Dict[str, SubAgent] = {}
         self._lock = threading.Lock()
     
@@ -561,7 +561,7 @@ class SubAgentManager:
             "agents": details,
         }
     
-    def clear_completed(self):
+    def clear_completed(self) -> None:
         """Remove completed agents from tracking."""
         with self._lock:
             self._agents = {k: v for k, v in self._agents.items() 
@@ -588,7 +588,7 @@ class ContextCompressor:
     condensed versions while preserving key information.
     """
     
-    def __init__(self, max_tokens: int = 128000):
+    def __init__(self, max_tokens: int = 128000) -> None:
         self.max_tokens = max_tokens
         self._cache = {}
     
@@ -707,7 +707,7 @@ class SelfVerificationEngine:
     - No obvious errors remain
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.checks_enabled = {
             "syntax": True,
             "file_exists": True,
@@ -872,7 +872,7 @@ class CodebaseIndex:
     - Git history hints
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.index = {
             "version": 1,
             "root": "",
@@ -1113,7 +1113,7 @@ class CodebaseIndex:
         
         return symbols, imports, definitions
     
-    def _save(self):
+    def _save(self) -> None:
         """Save index to disk."""
         try:
             INDEX_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -1122,7 +1122,7 @@ class CodebaseIndex:
         except Exception:
             pass
     
-    def load(self):
+    def load(self) -> None:
         """Load index from disk."""
         try:
             if INDEX_FILE.exists():
@@ -1360,7 +1360,7 @@ class CICDManager:
     similar to GitHub Actions / GitLab CI locally.
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.pipelines = {}
     
     def run_linter(self, path: str = ".") -> Dict:
@@ -1520,11 +1520,11 @@ class PermissionSystem:
     - whitelist: Only allow explicitly permitted operations
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.mode = "accept_all"
         self._load()
     
-    def set_mode(self, mode: str):
+    def set_mode(self, mode: str) -> None:
         """Set permission mode."""
         valid_modes = ["accept_all", "auto_accept_known", "ask_always", "whitelist"]
         if mode not in valid_modes:
@@ -1582,7 +1582,7 @@ class PermissionSystem:
     def get_mode(self) -> str:
         return self.mode
     
-    def _save(self):
+    def _save(self) -> None:
         try:
             PERMISSIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
             with open(PERMISSIONS_FILE, "w") as f:
@@ -1590,7 +1590,7 @@ class PermissionSystem:
         except Exception:
             pass
     
-    def _load(self):
+    def _load(self) -> None:
         try:
             if PERMISSIONS_FILE.exists():
                 with open(PERMISSIONS_FILE) as f:
@@ -1623,7 +1623,7 @@ class CrossLanguageAnalyzer:
     - Build/dependency relationships
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.language_map = {
             ".py": "Python",
             ".js": "JavaScript",
@@ -1717,12 +1717,12 @@ class BrowserAutomation:
     - Extracting page data
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         self._playwright_available = False
         self._selenium_available = False
         self._check_available()
     
-    def _check_available(self):
+    def _check_available(self) -> None:
         """Check which automation libraries are available."""
         try:
             import playwright
@@ -2007,7 +2007,7 @@ class MCPClient:
     Supports JSON-RPC 2.0.
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         self._connections = {}  # name -> {process, capabilities, tools, resources}
         self._config_path = Path.cwd() / ".mcp.json"
     
@@ -2260,7 +2260,7 @@ class MCPClient:
         except Exception as e:
             return {"success": False, "error": str(e)}
     
-    def disconnect(self, name: str = None):
+    def disconnect(self, name: str = None) -> None:
         """Disconnect from MCP server(s)."""
         if name:
             conn = self._connections.pop(name, None)
@@ -2304,7 +2304,7 @@ def get_mcp_client() -> MCPClient:
 class BulkSearchReplace:
     """Project-wide search and replace with regex support, preview, dry-run."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self._results_cache = {}
     
     def search(self, pattern: str, path: str = None, include: str = "*",

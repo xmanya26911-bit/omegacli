@@ -1,65 +1,76 @@
 #!/usr/bin/env python3
 """OMEGA Agent -- Core conversation loop with tool execution, memory injection, and commands."""
 
-import sys
-import os
+from __future__ import annotations
+
+import contextlib
 import json
-import time
+import os
+import subprocess
+import sys
 import threading
+import time
 import traceback
-import requests
 from pathlib import Path
 
-from memory import ShortTermMemory, get_persistent_memory, get_total_recall, AutoSaveManager
-from llm import LLMClient, LLMError, LLMAuthError, LLMRetryError
-from prompts import build_system_prompt, TOOL_DEFINITIONS
-from tools import execute_tool, TOOL_MAP
-from omega_project import (
-    get_project_context, get_project_context_block,
-    generate_project_map, smart_find_files,
-    generate_diff_preview, format_diff_for_display,
-    get_cost_tracker, discover_omega_md,
-)
-from omega_claude_features import (
-    get_hooks, get_sub_agent_manager, get_context_compressor,
-    get_verification_engine, get_codebase_index, get_permission_system,
-    detect_dead_imports, detect_unused_variables, detect_duplicate_code,
-    CICDManager, CrossLanguageAnalyzer, BrowserAutomation,
-    review_pull_request, deploy_staging, print_features_doc,
-    HOOK_EVENTS,
-)
+import requests
+
 from cli import (
-    print_user_input,
-    print_assistant_thinking,
-    print_assistant_done,
+    AVAILABLE_THEMES,
+    clear_current_tool,
+    format_size,
+    get_active_theme,
+    get_input,
     print_assistant_message,
-    print_assistant_header,
-    print_thinking_block,
-    print_thinking_busy,
-    print_thinking_start,
+    print_assistant_thinking,
+    print_error,
+    print_info,
+    print_success,
+    print_table,
+    print_task_complete,
+    print_theme_list,
     print_thinking_done,
-    reset_streaming_header,
+    print_thinking_start,
     print_tool_call,
     print_tool_result,
-    print_task_complete,
-    print_info,
+    print_user_input,
     print_warning,
-    print_error,
-    print_success,
-    set_current_tool,
-    clear_current_tool,
-    print_table,
     print_welcome,
-    print_help as cli_print_help,
-    print_theme_list,
-    get_input,
+    reset_streaming_header,
     set_active_theme,
-    get_active_theme,
-    get_theme_names,
-    AVAILABLE_THEMES,
-    format_size,
-    print_diff,
+    set_current_tool,
 )
+from cli import (
+    print_help as cli_print_help,
+)
+from config import Config
+from llm import LLMAuthError, LLMClient, LLMError, LLMRetryError
+from memory import ShortTermMemory, get_persistent_memory, get_total_recall
+from omega_claude_features import (
+    HOOK_EVENTS,
+    CICDManager,
+    deploy_staging,
+    detect_dead_imports,
+    detect_duplicate_code,
+    detect_unused_variables,
+    get_codebase_index,
+    get_context_compressor,
+    get_hooks,
+    get_permission_system,
+    get_verification_engine,
+    print_features_doc,
+    review_pull_request,
+)
+from omega_project import (
+    discover_omega_md,
+    generate_project_map,
+    get_cost_tracker,
+    get_project_context,
+    get_project_context_block,
+    smart_find_files,
+)
+from prompts import TOOL_DEFINITIONS, build_system_prompt
+from tools import execute_tool
 
 # Try to enable readline/history for interactive mode
 HISTORY_FILE = os.path.expanduser("~/.omega/history.txt")
@@ -69,26 +80,29 @@ try:
     import readline
     HAVE_READLINE = True
     try:
-        readline.read_history_file(HISTORY_FILE)
+        if hasattr(readline, 'read_history_file'):
+            readline.read_history_file(HISTORY_FILE)
     except (FileNotFoundError, OSError):
         pass
-    readline.set_history_length(500)
+    if hasattr(readline, 'set_history_length'):
+        readline.set_history_length(500)
 except ImportError:
     HAVE_READLINE = False
 
 
-def _save_history():
+def _save_history() -> None:
     """Save readline history if available."""
     if HAVE_READLINE:
         try:
             os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
-            readline.write_history_file(HISTORY_FILE)
+            if hasattr(readline, 'write_history_file'):
+                readline.write_history_file(HISTORY_FILE)
         except OSError:
             pass
 
 
 class Agent:
-    def __init__(self, config):
+    def __init__(self, config: Config) -> None:
         self.config = config
         # Apply theme from config at startup (with backward compatibility)
         theme_name = getattr(config, 'theme', 'default-dark')
@@ -105,7 +119,7 @@ class Agent:
         self.tool_call_count = 0
         self._last_user_input = ""
         self._last_assistant_output = ""
-        self._session_conversations = []
+        self._session_conversations: list = []
         self.cost_tracker = get_cost_tracker()
         self._project_context_loaded = False
         self._setup_system()
@@ -117,7 +131,7 @@ class Agent:
         # Initialize Claude Code Complete features (MCP, bulk ops, refactoring, release)
         self._init_claude_complete()
 
-    def _init_claude_complete(self):
+    def _init_claude_complete(self) -> None:
         """Register Claude Code Complete tools at startup."""
         try:
             from omega_claude_complete import init_claude_complete
@@ -125,18 +139,18 @@ class Agent:
             count = result.get("count", 0)
             if count > 0:
                 print_info(f"🔧 Claude Code Complete: {count} tools loaded")
-        except Exception as e:
+        except Exception:
             pass  # Silent fail on startup
 
-    def _setup_system(self):
+    def _setup_system(self) -> None:
         """Initialize or reset the system prompt."""
         self.memory.clear()
         system = build_system_prompt()
         self.memory.add_system(system)
 
-    def _inject_project_context(self):
+    def _inject_project_context(self) -> None:
         """Load OMEGA.md / CLAUDE.md project config into system prompt.
-        
+
         Discovers project-level instructions files from the current
         working directory and its parents, then injects them into
         the system prompt for context-aware assistance.
@@ -156,9 +170,9 @@ class Agent:
         except Exception:
             pass  # Never let config loading crash startup
 
-    def _auto_recover_context(self):
+    def _auto_recover_context(self) -> None:
         """Auto-recover the last session's conversation context.
-        
+
         When you come back after a month, this picks up where you left off.
         """
         try:
@@ -180,7 +194,7 @@ class Agent:
                     current = self.memory.get_messages()
                     if current and current[0]["role"] == "system":
                         current[0]["content"] += f"\n\n{summary}"
-                        
+
                         # Also inject recent key exchanges from the previous session
                         important_turns = []
                         for msg in non_system[-10:]:  # Last 10 messages
@@ -192,17 +206,17 @@ class Agent:
                                 content = msg.get("content", "")
                                 if content and len(content) > 10:
                                     important_turns.append(f"OMEGA: {content[:200]}")
-                        
+
                         if important_turns:
                             context = "\n[Previous conversation context (auto-recovered)]:\n"
                             context += "\n".join(important_turns[-6:])  # Last 6 exchanges
                             current[0]["content"] += context
         except Exception:
             pass  # Silently continue if recovery fails
-    
-    def _auto_save_turn(self):
+
+    def _auto_save_turn(self) -> None:
         """Auto-save the current conversation turn to Total Recall.
-        
+
         Called AFTER each assistant response is complete.
         This ensures EVERY exchange is permanently recorded.
         """
@@ -219,7 +233,7 @@ class Agent:
                             "arguments": fn.get("arguments", "")[:500],
                         })
                     break
-            
+
             # Save conversation turn
             self.recall.save_turn(
                 user_msg=self._last_user_input,
@@ -227,15 +241,15 @@ class Agent:
                 tool_calls=tool_calls_data,
                 summary="",  # Could be AI-generated summary in future
             )
-            
+
             # Auto-save full session snapshot periodically (every 5 turns)
             if self.tool_call_count > 0 and self.tool_call_count % 5 == 0:
                 self.recall.save_snapshot(self.memory.get_messages())
-                
+
         except Exception:
             pass  # Never let saving crash the conversation
-    
-    def _inject_memory_context(self, user_input):
+
+    def _inject_memory_context(self, user_input: str) -> None:
         """Inject relevant memories into system prompt context."""
         relevant = self.long_term.get_relevant_context(user_input)
         if relevant:
@@ -243,7 +257,7 @@ class Agent:
             if current and current[0]["role"] == "system":
                 current[0]["content"] += relevant
 
-    def run_once(self, user_input):
+    def run_once(self, user_input: str) -> None:
         """Execute a single user request through the agent loop."""
         # Sanitize memory: remove orphaned tool_calls from any previous interrupted turn
         self._ensure_consistent_memory()
@@ -392,8 +406,8 @@ class Agent:
             _heartbeat_thread = None
             _heartbeat_start = time.time()
             _heartbeat_lock = threading.Lock()
-            
-            def _heartbeat_loop():
+
+            def _heartbeat_loop() -> None:
                 import sys as _sys
                 while _heartbeat_running.is_set():
                     interrupted = _heartbeat_running.wait(5.0)
@@ -437,7 +451,7 @@ class Agent:
                         get_hooks().run("pre_tool", hook_ctx)
                     except Exception:
                         pass
-                    
+
                     _start = time.time()
                     set_current_tool(tc_name)
 
@@ -445,7 +459,7 @@ class Agent:
                     result = execute_tool(tc_name, tc_args)
                     clear_current_tool()
                     _elapsed = time.time() - _start
-                    
+
                     # ── Run post-tool hooks (Claude Code+) ──
                     try:
                         hook_ctx["result"] = str(result)
@@ -492,7 +506,8 @@ class Agent:
                                 abs_path = fpath if _os.path.isabs(fpath) else _os.path.join(_os.getcwd(), fpath)
                                 if _os.path.exists(abs_path):
                                     try:
-                                        _ast.parse(open(abs_path, encoding="utf-8").read())
+                                        with open(abs_path, encoding="utf-8") as _f:
+                                            _ast.parse(_f.read())
                                         self._last_syntax_ok = True
                                     except SyntaxError as syn_err:
                                         self._last_syntax_ok = False
@@ -532,13 +547,12 @@ class Agent:
                                     "tool": fn.get("name", ""),
                                     "args": fn.get("arguments", ""),
                                 })
-                        elif msg.get("role") == "tool":
-                            if tool_history:
-                                tool_history[-1]["result"] = msg.get("content", "")
-                    
+                        elif msg.get("role") == "tool" and tool_history:
+                            tool_history[-1]["result"] = msg.get("content", "")
+
                     verifier = get_verification_engine()
                     v_result = verifier.verify(self._last_user_input, tool_history)
-                    
+
                     if v_result["passed"]:
                         for p in v_result["passed"][:3]:
                             print_info(f"  ✅ {p}")
@@ -550,14 +564,12 @@ class Agent:
                             print_warning(f"  ❌ {f}")
                 except Exception:
                     pass  # Never let verification crash completion
-                
+
                 print_task_complete("Task complete")
                 self._print_usage_stats()
                 # Run shutdown hooks
-                try:
+                with contextlib.suppress(Exception):
                     get_hooks().run("on_shutdown", {"task": self._last_user_input})
-                except Exception:
-                    pass
                 # TOTAL RECALL: auto-save this turn permanently
                 self._auto_save_turn()
                 return
@@ -569,7 +581,7 @@ class Agent:
             print_warning(f"Reached maximum steps ({max_steps}). Ending conversation turn.")
             self._print_usage_stats()
 
-    def _print_usage_stats(self):
+    def _print_usage_stats(self) -> None:
         """Print token usage statistics with cost tracking."""
         stats = self.llm.get_token_stats()
         if stats["total_tokens"] > 0:
@@ -577,7 +589,7 @@ class Agent:
             prompt_tok = stats.get("prompt_tokens", 0)
             completion_tok = stats.get("completion_tokens", 0)
             self.cost_tracker.record(prompt_tok, completion_tok, self._last_user_input[:50])
-            
+
             mem_stats = self.memory.get_token_stats()
             cost_summary = self.cost_tracker.get_task_summary()
             if cost_summary:
@@ -594,7 +606,7 @@ class Agent:
                 ],
             )
 
-    def _ensure_consistent_memory(self):
+    def _ensure_consistent_memory(self) -> None:
         """Remove orphaned assistant(tool_calls) messages that lack tool responses.
         Prevents API error: 'assistant message with tool_calls must be followed by
         tool messages responding to each tool_call_id'."""
@@ -620,7 +632,7 @@ class Agent:
             else:
                 i += 1
 
-    def run_interactive(self):
+    def run_interactive(self) -> None:
         """Run interactive REPL loop."""
         self.running = True
         print_welcome(self.config.model)
@@ -661,7 +673,7 @@ class Agent:
             finally:
                 _save_history()
 
-    def _handle_command(self, cmd):
+    def _handle_command(self, cmd: str) -> None:
         """Handle slash commands."""
         parts = cmd.split(maxsplit=1)
         command = parts[0].lower()
@@ -727,18 +739,12 @@ class Agent:
                     print(mem_result)
 
         elif command == "/memory":
-            if arg:
-                result = self.long_term.search(arg)
-            else:
-                result = self.long_term.list_memories()
+            result = self.long_term.search(arg) if arg else self.long_term.list_memories()
             print_info("Persistent memory:")
             print(result)
 
         elif command in ("/notes", "/note"):
-            if arg:
-                result = self.long_term.list_notes(tag=arg)
-            else:
-                result = self.long_term.list_notes()
+            result = self.long_term.list_notes(tag=arg) if arg else self.long_term.list_notes()
             print_info("Saved notes:")
             print(result)
 
@@ -826,10 +832,7 @@ class Agent:
 
         elif command == "/cache":
             from tools import cache_stats, clear_cache
-            if arg == "clear":
-                result = clear_cache()
-            else:
-                result = cache_stats()
+            result = clear_cache() if arg == "clear" else cache_stats()
             print(result.content)
 
         elif command == "/find":
@@ -864,7 +867,7 @@ class Agent:
             print(f"  Persistent notes: {stats.get('persistent_notes', 0)}")
             tools = stats.get("tools_used", {})
             if tools:
-                print(f"  Most used tools:")
+                print("  Most used tools:")
                 for name, count in list(tools.items())[:8]:
                     print(f"    {name}: {count}x")
             if dates:
@@ -904,7 +907,7 @@ class Agent:
             else:
                 print_info("No OMEGA.md / CLAUDE.md found.")
                 print_info("Create one with: /project init")
-            
+
             if self._project_context_loaded:
                 print_success("✓ Project context is active in this session")
             else:
@@ -915,7 +918,7 @@ class Agent:
             from omega_project import generate_omega_md_template
             name = arg[5:].strip() if len(arg) > 5 else ""
             template = generate_omega_md_template(name)
-            
+
             target = Path.cwd() / "OMEGA.md"
             if target.exists():
                 print_warning(f"OMEGA.md already exists at {target}")
@@ -1058,8 +1061,9 @@ class Agent:
                     else:
                         results = index.search_symbol(arg)
                         defs = index.find_definition(arg)
-                        refs = index.find_references(arg)
-                        
+                        # find_references may have side effects; discard return
+                        index.find_references(arg) if hasattr(index, 'find_references') else None
+
                         if defs:
                             print_success(f"Definitions ({len(defs)}):")
                             for d in defs:
@@ -1105,7 +1109,7 @@ class Agent:
             try:
                 dead_imports = detect_dead_imports(path)
                 unused_vars = detect_unused_variables(path)
-                
+
                 if dead_imports:
                     print_warning(f"Unused imports ({len(dead_imports)}):")
                     for item in dead_imports[:20]:
@@ -1114,7 +1118,7 @@ class Agent:
                         print(f"  ... and {len(dead_imports) - 20} more")
                 else:
                     print_success("No unused imports found.")
-                
+
                 if unused_vars:
                     print_warning(f"Unused variables ({len(unused_vars)}):")
                     for item in unused_vars[:20]:
@@ -1123,7 +1127,7 @@ class Agent:
                         print(f"  ... and {len(unused_vars) - 20} more")
                 else:
                     print_success("No unused variables found.")
-                
+
                 if not dead_imports and not unused_vars:
                     print_success("Clean code! No dead code detected.")
             except Exception as e:
@@ -1157,9 +1161,9 @@ class Agent:
             parts = arg.split(maxsplit=1) if arg else []
             subcmd = parts[0] if parts else "list"
             rest = parts[1] if len(parts) > 1 else ""
-            
+
             hooks = get_hooks()
-            
+
             if subcmd == "list":
                 all_hooks = hooks.list_hooks()
                 if all_hooks:
@@ -1175,10 +1179,9 @@ class Agent:
                     print_info("No hooks registered.")
                     print_info("Usage: /hooks add <event> <action> [name]")
                     print_info(f"Events: {', '.join(sorted(HOOK_EVENTS.keys()))}")
-            
+
             elif subcmd == "add":
                 # Format: /hooks add pre_edit "black --quiet file.py" "Format before edit"
-                from omega_claude_features import HOOK_EVENTS
                 parts2 = rest.split(maxsplit=2) if rest else []
                 if len(parts2) >= 2:
                     event = parts2[0]
@@ -1192,14 +1195,14 @@ class Agent:
                 else:
                     print_info("Usage: /hooks add <event> <action> [name]")
                     print_info(f"Example: /hooks add pre_edit 'black --quiet {rest}' 'Format on save'")
-            
+
             elif subcmd == "remove" or subcmd == "rm":
                 if rest:
                     hooks.unregister(rest)
                     print_success(f"Hook removed: {rest}")
                 else:
                     print_info("Usage: /hooks remove <name>")
-            
+
             else:
                 print_info(f"Unknown hooks subcommand: {subcmd}")
                 print_info("Usage: /hooks list|add|remove")
@@ -1229,10 +1232,14 @@ class Agent:
             result = system_info()
             print(result.content)
 
+        elif command in ("/diagnostics", "/diag"):
+            self._run_diagnostics()
+            print_info("Diagnostics complete.")
+
         else:
             print_info(f"Unknown command: {command}. Type /help for commands.")
 
-    def _handle_configure(self, arg):
+    def _handle_configure(self, arg: str) -> None:
         """Handle /configure command."""
         if not arg:
             print_info("Usage: /configure <setting> <value>")
@@ -1277,7 +1284,111 @@ class Agent:
             print_info(f"Unknown setting: {setting}")
             print_info("Settings: api_key, base_url, model")
 
-    def _save_session(self, name=""):
+    def _run_diagnostics(self) -> None:
+        """Run and display system diagnostics — code health, test status, memory, project stats."""
+        from cli import _use_rich, get_theme_colors
+        from cli import console as _rconsole
+
+        diag_start = time.time()
+        results: list[tuple[str, str, str]] = []  # (check, status, detail)
+
+        # ── 1. Runtime info ──
+        import platform
+        py_ver = platform.python_version()
+        plat = platform.platform()
+        results.append(("Python", "✅", py_ver))
+        results.append(("Platform", "✅", plat.split("-")[0]))
+
+        # ── 2. OMEGA project structure ──
+        import ast as _ast
+        import os as _os
+        base = _os.path.dirname(_os.path.abspath(__file__))
+        py_files = []
+        for root, dirs, files in _os.walk(base):
+            # Prune vendor / archive / .git
+            dirs[:] = [d for d in dirs if d not in (".git", "__pycache__", "archive",
+                       "browser-use-repo", "spiderfoot", "claude-code-repo",
+                       "operations", "node_modules", ".venv", "venv")]
+            for f in files:
+                if f.endswith(".py"):
+                    py_files.append(_os.path.join(root, f))
+        total_loc = 0
+        for pf in py_files:
+            try:
+                with open(pf, encoding="utf-8", errors="replace") as fh:
+                    total_loc += sum(1 for line in fh if line.strip())
+            except Exception:
+                pass
+        results.append(("Python files", "✅", str(len(py_files))))
+        results.append(("Source LOC", "✅", f"{total_loc:,}"))
+
+        # ── 3. Type hint coverage ──
+        typed_files: dict[str, str] = {"agent.py": "0/0", "config.py": "0/0"}
+        for fname in typed_files:
+            fpath = _os.path.join(base, fname)
+            if _os.path.exists(fpath):
+                try:
+                    tree = _ast.parse(open(fpath, encoding="utf-8").read())
+                    funcs = [n for n in _ast.walk(tree) if isinstance(n, (_ast.FunctionDef, _ast.AsyncFunctionDef))]
+                    total_f = len(funcs)
+                    typed = sum(1 for fn in funcs if fn.returns or fn.args.args and any(
+                        a.annotation for a in fn.args.args
+                    ))
+                    # Also check the __init__
+                    typed_files[fname] = f"{typed}/{total_f}" if total_f else "0/0"
+                except Exception:
+                    typed_files[fname] = "ERR"
+        results.append(("Typed funcs (agent.py)", "✅" if "0" not in typed_files.get("agent.py", "0/0").split("/")[1] else "⚠️", typed_files.get("agent.py", "ERR")))
+        results.append(("Typed funcs (config.py)", "✅" if "0" not in typed_files.get("config.py", "0/0").split("/")[1] else "⚠️", typed_files.get("config.py", "ERR")))
+
+        # ── 4. Config health ──
+        cfg_issues = self.config.validate()
+        cfg_status = "✅" if not cfg_issues else "⚠️"
+        cfg_detail = "OK" if not cfg_issues else f"{len(cfg_issues)} issue(s)"
+        results.append(("Config valid", cfg_status, cfg_detail))
+
+        # ── 5. Memory stats ──
+        try:
+            mem_stats = self.memory.get_token_stats()
+            msg_count = mem_stats.get("messages", len(self.memory.messages))
+            tok_count = mem_stats.get("estimated_tokens", 0)
+            results.append(("Messages", "✅", str(msg_count)))
+            results.append(("Est. tokens", "✅", f"{tok_count:,}"))
+        except Exception:
+            results.append(("Memory", "⚠️", "unavailable"))
+
+        # ── 6. Test suite ──
+        try:
+            import subprocess
+            tr = subprocess.run(
+                [sys.executable, "-m", "unittest", "discover", "-s", _os.path.join(base, "tests"), "-p", "test_*.py"],
+                capture_output=True, text=True, timeout=30,
+                cwd=base,
+            )
+            last_line = [line for line in tr.stdout.strip().split("\\n") if line][-1] if tr.stdout.strip() else ""
+            if "OK" in last_line:
+                results.append(("Tests", "✅", last_line.replace("OK", "").strip() or "all passed"))
+            elif "FAILED" in last_line:
+                results.append(("Tests", "❌", last_line))
+            else:
+                results.append(("Tests", "⚠️", last_line or "check output"))
+        except Exception as e:
+            results.append(("Tests", "⚠️", str(e)[:50]))
+
+        # ── Display ──
+        elapsed = f"{time.time() - diag_start:.2f}s"
+        if _use_rich:
+            c = get_theme_colors()
+            _rconsole.print(f"\\n[bold {c['title']}]🔬 OMEGA Diagnostics[/bold {c['title']}]")
+            _rconsole.print(f"  [dim {c['dim_text']}]Run in {elapsed}[/dim {c['dim_text']}]\\n")
+            for check, status, detail in results:
+                _rconsole.print(f"  {status} [bold]{check:<16}[/bold] [dim]{detail}[/dim]")
+        else:
+            print(f"\\n🔬 OMEGA Diagnostics  ({elapsed})\\n")
+            for check, status, detail in results:
+                print(f"  {status} {check:<16} {detail}")
+
+    def _save_session(self, name: str = "") -> None:
         """Save current conversation to a session file."""
         if not name:
             from datetime import datetime
@@ -1298,7 +1409,7 @@ class Agent:
         except Exception as e:
             print_error(f"Failed to save session: {e}")
 
-    def _load_session(self, name):
+    def _load_session(self, name: str) -> None:
         """Load a conversation from a session file."""
         if not name:
             print_info("Usage: /load <session_name>")
@@ -1319,7 +1430,7 @@ class Agent:
         except Exception as e:
             print_error(f"Failed to load session: {e}")
 
-    def _list_sessions(self):
+    def _list_sessions(self) -> None:
         """List all saved sessions."""
         sessions = sorted(SESSION_DIR.glob("*.json"))
         if not sessions:
@@ -1336,14 +1447,14 @@ class Agent:
                 rows.append([s.stem, "?", "?"])
         print_table("Saved Sessions", ["Name", "Messages", "File"], rows)
 
-    def _print_help(self):
+    def _print_help(self) -> None:
         """Print help information — Claude Code inspired with all new commands."""
         cli_print_help()
         # Also print the enhanced commands
-        from cli import console as _rconsole, _use_rich, _current_theme, get_theme_colors
-        from cli import sanitize as _sanitize
+        from cli import _use_rich, get_theme_colors
+        from cli import console as _rconsole
         c = get_theme_colors() if _use_rich else {}
-        
+
         extra_help = [
             ("Project (Claude Code+)", [
                 ("/compass", "🧭 Generate project map with structure, tech, git status"),
@@ -1370,11 +1481,11 @@ class Agent:
             ]),
             ("Advanced", [
                 ("/claude-features", "📋 Show all Claude Code+ features added"),
+                ("/diagnostics", "🔬 System diagnostics — code health, tests, memory"),
             ]),
         ]
-        
+
         if _use_rich:
-            from rich.text import Text
             for cat_name, commands in extra_help:
                 _rconsole.print(f"\n  [bold {c['title']}]{cat_name}[/bold {c['title']}]")
                 for cmd, desc in commands:
@@ -1382,7 +1493,7 @@ class Agent:
             _rconsole.print(f"\n  [dim {c['dim_text']}]What shall we build? 😎[/dim {c['dim_text']}]")
             _rconsole.print()
         else:
-            from cli import _theme_ansi_bright, _theme_ansi, Style, _S
+            from cli import Style, _theme_ansi, _theme_ansi_bright
             tc = _theme_ansi_bright("title")
             cmd_color = _theme_ansi_bright("tool")
             dc = _theme_ansi("dim")

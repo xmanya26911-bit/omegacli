@@ -8,13 +8,12 @@ import sys
 import glob as glob_module
 import subprocess
 import fnmatch
-import urllib.parse
 import hashlib
 import time
 import random
 from pathlib import Path
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor, as_completed, Future, TimeoutError as FuturesTimeoutError
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from threading import Lock
 
 # Camera module for webcam/capture/vision features
@@ -35,54 +34,8 @@ except ImportError as e:
     _HAS_CAMERA = False
     _CAMERA_IMPORT_ERROR = str(e)
 
-# Screencast module for screen capture/streaming
-# OMEGA HACKER -- Offensive Security Framework
-try:
-    from omega_hacker import (
-        hack_website,
-        hack_full,
-        hack_deep,
-        scan_ports,
-        scan_sqli,
-        scan_xss,
-        scan_lfi,
-        scan_cmdi,
-        scan_ssrf,
-        scan_ssti,
-        scan_xxe,
-        scan_cors,
-        scan_open_redirect,
-        detect_technologies,
-        detect_wordpress,
-        detect_waf,
-        detect_api_endpoints,
-        exploit_sqli_extract,
-        exploit_lfi_read,
-        exploit_cmdi_execute,
-        exploit_graphql_introspection,
-        subdomain_bruteforce,
-        full_dns_enum,
-        whois_lookup,
-        dir_bruteforce,
-        brute_force_login,
-        crack_hash,
-        jwt_decode,
-        jwt_crack,
-        generate_webshell,
-        generate_reverse_shell,
-        generate_xss_exploit,
-        scan_for_sensitive_files,
-        test_mongodb,
-        test_redis,
-        test_elasticsearch,
-    )
-    _HAS_HACKER = True
-except ImportError as e:
-    _HAS_HACKER = False
-    _HACKER_IMPORT_ERROR = str(e)
-except Exception as e:
-    _HAS_HACKER = False
-    _HACKER_IMPORT_ERROR = str(e)
+# Import hacker tool wrappers from extracted module
+from omega.hacker_tools import _HACKER_TOOLS, _HAS_HACKER, _HACKER_IMPORT_ERROR  # noqa: F401
 
 try:
     from screencast import (
@@ -135,7 +88,7 @@ def _cache_set(key, value):
     _cache[key] = {"value": value, "time": time.time()}
 
 
-def _clear_cache():
+def _clear_cache() -> str:
     _cache.clear()
     return "Cache cleared."
 
@@ -178,7 +131,7 @@ class ToolResult:
     def __str__(self):
         return self.content
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {"content": self.content, "is_error": self.is_error}
 
 
@@ -196,19 +149,19 @@ def _format_size(size):
     return f"{size:.1f} TB"
 
 
-def _check_path_allowed(path):
+def _check_path_allowed(path) -> tuple:
     """No restrictions — your commands are absolute. 😎"""
     return True, ""
 
 
 # ??? Tool Implementations ?????????????????????????????????????????????????????
 
-def execute_command(command, timeout=120, workdir=""):
+def execute_command(command, timeout=120, workdir="") -> ToolResult:
     try:
         cwd = workdir if workdir else None
         # Build PowerShell script that writes command to temp file and executes it.
         # This avoids ALL quoting/escaping issues with the command string.
-        import tempfile, base64, textwrap, re
+        import base64, textwrap
 
         # Sanitize cmd.exe-style redirects for PowerShell compatibility
         sanitized = command.replace('>nul', '>$null').replace('2>nul', '2>$null')
@@ -266,7 +219,7 @@ def execute_command(command, timeout=120, workdir=""):
         return ToolResult(f"! Error executing command: {e}", is_error=True)
 
 
-def read_file(path, offset=1, limit=0):
+def read_file(path, offset=1, limit=0) -> ToolResult:
     try:
         allowed, msg = _check_path_allowed(path)
         if not allowed:
@@ -317,7 +270,7 @@ def read_file(path, offset=1, limit=0):
         return ToolResult(f"! Error reading file: {e}", is_error=True)
 
 
-def write_file(path, content):
+def write_file(path, content) -> ToolResult:
     try:
         allowed, msg = _check_path_allowed(path)
         if not allowed:
@@ -349,7 +302,7 @@ def write_file(path, content):
         return ToolResult(f"! Error writing file: {e}", is_error=True)
 
 
-def edit_file(path, old_string, new_string):
+def edit_file(path, old_string, new_string) -> ToolResult:
     try:
         allowed, msg = _check_path_allowed(path)
         if not allowed:
@@ -390,7 +343,7 @@ def edit_file(path, old_string, new_string):
         return ToolResult(f"! Error editing file: {e}", is_error=True)
 
 
-def glob_files(pattern, path="."):
+def glob_files(pattern, path=".") -> ToolResult:
     try:
         expanded_path = os.path.expanduser(path)
         if not os.path.exists(expanded_path):
@@ -411,7 +364,7 @@ def glob_files(pattern, path="."):
         return ToolResult(f"! Error globbing: {e}", is_error=True)
 
 
-def grep_files(pattern, include="", path="."):
+def grep_files(pattern, include="", path=".") -> ToolResult:
     try:
         expanded_path = os.path.expanduser(path)
         results = []
@@ -451,7 +404,7 @@ def grep_files(pattern, include="", path="."):
 
 # --- Advanced File Operations ---
 
-def batch_read(files, encoding="utf-8", max_total_size=10*1024*1024):
+def batch_read(files, encoding="utf-8", max_total_size=10*1024*1024) -> ToolResult:
     """Read multiple files in batch with encoding detection and size limits."""
     try:
         expanded_files = [os.path.expanduser(f) for f in files]
@@ -505,12 +458,11 @@ def batch_read(files, encoding="utf-8", max_total_size=10*1024*1024):
     except Exception as e:
         return ToolResult(f"! Error in batch_read: {e}", is_error=True)
 
-def batch_write(files_data):
+def batch_write(files_data) -> ToolResult:
     """Write multiple files in batch. files_data: dict of path->content."""
     try:
-        results = []
+        results: list[str] = []
         total_size = 0
-        max_size = 50*1024*1024  # 50MB
 
         for fpath, content in files_data.items():
             expanded = os.path.expanduser(fpath)
@@ -521,14 +473,9 @@ def batch_write(files_data):
                 results.append(f"  {fpath}: ! Too large ({_format_size(len(content))})")
                 continue
 
-            existed = path_obj.exists()
-            old_size = path_obj.stat().st_size if existed else 0
-
             path_obj.write_text(content, encoding="utf-8")
             total_size += len(content)
 
-            size_str = _format_size(len(content))
-            old_str = f" (overwrote {old_str})" if existed else ""
             results.append(f"  {fpath}: [OK] {_format_size(len(content))} written")
 
         output = f"Batch write completed: {len(results)} files, {_format_size(total_size)} total"
@@ -536,7 +483,7 @@ def batch_write(files_data):
     except Exception as e:
         return ToolResult(f"! Error in batch_write: {e}", is_error=True)
 
-def find_similar_files(path=".", extensions=None, similarity_threshold=0.7, max_files=10):
+def find_similar_files(path=".", extensions=None, similarity_threshold=0.7, max_files=10) -> ToolResult:
     """Find similar files by content analysis (placeholder for ML-like similarity)."""
     try:
         expanded = os.path.expanduser(path)
@@ -584,7 +531,7 @@ def find_similar_files(path=".", extensions=None, similarity_threshold=0.7, max_
     except Exception as e:
         return ToolResult(f"! Error in find_similar_files: {e}", is_error=True)
 
-def predictive_cache_stats():
+def predictive_cache_stats() -> ToolResult:
     """Extended cache statistics with predictive analytics."""
     try:
         # Get current cache stats
@@ -605,7 +552,7 @@ def predictive_cache_stats():
         total = _cache_hits + _cache_misses
         hit_rate = (_cache_hits / total * 100) if total > 0 else 0
 
-        output = f"Predictive Cache Analysis:\n"
+        output = "Predictive Cache Analysis:\n"
         output += f"  {cache_info}\n"
         output += f"  Recent accesses (5min): {recent_accesses} items\n"
         output += f"  Estimated future hits: {future_hits_est} items\n"
@@ -623,7 +570,7 @@ def predictive_cache_stats():
         return ToolResult(output)
     except Exception as e:
         return ToolResult(f"! Error in predictive_cache_stats: {e}", is_error=True)
-def web_fetch(url):
+def web_fetch(url) -> ToolResult:
     """Fetch URL with caching (60s TTL)."""
     cache_key = _cache_key("web_fetch", url)
     cached = _cache_get(cache_key, ttl=60)
@@ -660,7 +607,7 @@ def web_fetch(url):
 
 
 @retry(max_attempts=2, base_delay=1.0)
-def web_search(query, num_results=10):
+def web_search(query, num_results=10) -> ToolResult:
     """Search web with caching (120s TTL). Uses DuckDuckGo HTML search."""
     cache_key = _cache_key("web_search", query, num_results)
     cached = _cache_get(cache_key, ttl=120)
@@ -751,7 +698,7 @@ def web_search(query, num_results=10):
         return ToolResult(f"! Error searching: {e}", is_error=True)
 
 
-def list_dir(path="."):
+def list_dir(path=".") -> ToolResult:
     """List directory with enhanced formatting, caching for 10s."""
     cache_key = _cache_key("list_dir", path)
     cached = _cache_get(cache_key, ttl=10)
@@ -800,7 +747,7 @@ def list_dir(path="."):
         return ToolResult(f"! Error listing directory: {e}", is_error=True)
 
 
-def get_date():
+def get_date() -> ToolResult:
     now = datetime.now()
     import time as _time
     tz_name = _time.tzname[0] if _time.daylight else _time.tzname[0]
@@ -823,7 +770,7 @@ def get_date():
     )
 
 
-def hash_file(path, algorithm="sha256"):
+def hash_file(path, algorithm="sha256") -> ToolResult:
     """Compute file hash for integrity verification."""
     try:
         expanded = os.path.expanduser(path)
@@ -852,7 +799,7 @@ def hash_file(path, algorithm="sha256"):
         return ToolResult(f"! Error hashing file: {e}", is_error=True)
 
 
-def download_file(url, output_path):
+def download_file(url, output_path) -> ToolResult:
     """Download file with progress tracking."""
     try:
         import requests
@@ -871,7 +818,6 @@ def download_file(url, output_path):
         resp = requests.get(url, headers=headers, stream=True, timeout=60)
         resp.raise_for_status()
 
-        total_size = int(resp.headers.get("content-length", 0))
         downloaded = 0
         chunk_count = 0
 
@@ -894,7 +840,7 @@ def download_file(url, output_path):
         return ToolResult(f"! Error downloading: {e}", is_error=True)
 
 
-def diff_files(path1, path2, context_lines=3):
+def diff_files(path1, path2, context_lines=3) -> ToolResult:
     """Show differences between two files."""
     try:
         expanded1 = os.path.expanduser(path1)
@@ -931,7 +877,7 @@ def diff_files(path1, path2, context_lines=3):
         return ToolResult(f"! Error diffing files: {e}", is_error=True)
 
 
-def system_info():
+def system_info() -> ToolResult:
     """Get detailed system information."""
     try:
         import platform
@@ -966,7 +912,7 @@ def system_info():
     return ToolResult("\n".join(lines))
 
 
-def system_status():
+def system_status() -> ToolResult:
     """JARVIS-style comprehensive system analysis. Returns a polished status overview."""
     try:
         import platform
@@ -989,7 +935,7 @@ def system_status():
         cpu_percent = psutil.cpu_percent(interval=0.3)
         cpu_count = psutil.cpu_count()
         cpu_phys = psutil.cpu_count(logical=False) or cpu_count
-        lines.append(f"\n  ? Processing:")
+        lines.append("\n  ? Processing:")
         lines.append(f"     CPU: {platform.processor() or 'Unknown'}")
         lines.append(f"     Cores: {cpu_phys} physical / {cpu_count} logical")
         # CPU bar
@@ -1003,7 +949,7 @@ def system_status():
         mem_bar_len = 20
         mem_filled = int(mem.percent / 100 * mem_bar_len)
         mem_bar = "#" * mem_filled + "?" * (mem_bar_len - mem_filled)
-        lines.append(f"\n  ? Memory:")
+        lines.append("\n  ? Memory:")
         lines.append(f"     Total: {_format_size(mem.total)}")
         lines.append(f"     Used:  {_format_size(mem.used)} ({mem.percent:.1f}%)")
         lines.append(f"     Avail: {_format_size(mem.available)}")
@@ -1014,7 +960,7 @@ def system_status():
         disk_bar_len = 20
         disk_filled = int(disk.percent / 100 * disk_bar_len)
         disk_bar = "#" * disk_filled + "?" * (disk_bar_len - disk_filled)
-        lines.append(f"\n  ? Storage (C:\\):")
+        lines.append("\n  ? Storage (C:\\):")
         lines.append(f"     Total: {_format_size(disk.total)}")
         lines.append(f"     Used:  {_format_size(disk.used)} ({disk.percent:.1f}%)")
         lines.append(f"     Free:  {_format_size(disk.free)}")
@@ -1030,7 +976,7 @@ def system_status():
         lines.append(f"     Last boot: {boot.strftime('%Y-%m-%d %H:%M:%S')}")
 
         # Top processes by CPU
-        lines.append(f"\n  ? Active Processes:")
+        lines.append("\n  ? Active Processes:")
         procs = sorted(psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent']),
                        key=lambda p: p.info['cpu_percent'] or 0, reverse=True)[:5]
         for i, p in enumerate(procs, 1):
@@ -1044,7 +990,7 @@ def system_status():
 
         # Network
         net = psutil.net_io_counters()
-        lines.append(f"\n  ? Network:")
+        lines.append("\n  ? Network:")
         lines.append(f"     Sent: {_format_size(net.bytes_sent)}")
         lines.append(f"     Received: {_format_size(net.bytes_recv)}")
     else:
@@ -1052,11 +998,11 @@ def system_status():
         lines.append(f"     OS: {platform.system()} {platform.release()}")
         lines.append(f"     Machine: {platform.machine()}")
         lines.append(f"     Python: {platform.python_version()}")
-        lines.append(f"     Note: Install 'psutil' for detailed metrics (pip install psutil)")
+        lines.append("     Note: Install 'psutil' for detailed metrics (pip install psutil)")
 
     # Python info
     import sys
-    lines.append(f"\n  ? Software Environment:")
+    lines.append("\n  ? Software Environment:")
     lines.append(f"     Python: {sys.version.split()[0]} ({platform.python_implementation()})")
     lines.append(f"     Host: {platform.node()}")
 
@@ -1064,7 +1010,7 @@ def system_status():
     from tools import TOOL_MAP
     lines.append(f"     OMEGA Protocols: {len(TOOL_MAP)} tools loaded")
 
-    lines.append(f"\n  ? Status: ")
+    lines.append("\n  ? Status: ")
     # Determine overall health
     if has_psutil:
         health_issues = []
@@ -1080,7 +1026,7 @@ def system_status():
         if health_issues:
             lines.append(f"     [WARN] Advisory: {'; '.join(health_issues)}")
         else:
-            lines.append(f"     [OK] All systems nominal")
+            lines.append("     [OK] All systems nominal")
     else:
         lines.append("     [OK] Systems online (limited metrics)")
 
@@ -1096,7 +1042,7 @@ def system_status():
     })
 
 
-def self_diagnose():
+def self_diagnose() -> ToolResult:
     """Run comprehensive self-diagnostics."""
     issues = []
     good = []
@@ -1212,31 +1158,31 @@ def self_diagnose():
 
 # ??? Memory Tools ?????????????????????????????????????????????????????????????
 
-def remember(key, value, tags=None):
+def remember(key, value, tags=None) -> ToolResult:
     from memory import get_persistent_memory
     pm = get_persistent_memory()
     return ToolResult(pm.remember(key, value, tags))
 
 
-def recall(key):
+def recall(key) -> ToolResult:
     from memory import get_persistent_memory
     pm = get_persistent_memory()
     return ToolResult(pm.recall(key))
 
 
-def forget(key):
+def forget(key) -> ToolResult:
     from memory import get_persistent_memory
     pm = get_persistent_memory()
     return ToolResult(pm.forget(key))
 
 
-def search_memory(query):
+def search_memory(query) -> ToolResult:
     from memory import get_persistent_memory
     pm = get_persistent_memory()
     return ToolResult(pm.search(query))
 
 
-def list_memories(tag=""):
+def list_memories(tag="") -> ToolResult:
     from memory import get_persistent_memory
     pm = get_persistent_memory()
     if tag:
@@ -1244,25 +1190,25 @@ def list_memories(tag=""):
     return ToolResult(pm.list_memories())
 
 
-def save_note(title, content, tags=None):
+def save_note(title, content, tags=None) -> ToolResult:
     from memory import get_persistent_memory
     pm = get_persistent_memory()
     return ToolResult(pm.save_note(title, content, tags))
 
 
-def read_note(title):
+def read_note(title) -> ToolResult:
     from memory import get_persistent_memory
     pm = get_persistent_memory()
     return ToolResult(pm.read_note(title))
 
 
-def delete_note(title):
+def delete_note(title) -> ToolResult:
     from memory import get_persistent_memory
     pm = get_persistent_memory()
     return ToolResult(pm.delete_note(title))
 
 
-def list_notes(tag=""):
+def list_notes(tag="") -> ToolResult:
     from memory import get_persistent_memory
     pm = get_persistent_memory()
     if tag:
@@ -1270,13 +1216,13 @@ def list_notes(tag=""):
     return ToolResult(pm.list_notes())
 
 
-def finish(summary):
+def finish(summary) -> ToolResult:
     return ToolResult(f"? Task complete: {summary}")
 
 
 # ??? New File Operation Tools ???????????????????????????????????????????????????
 
-def move_file(source, destination, overwrite=False):
+def move_file(source, destination, overwrite=False) -> ToolResult:
     """Move or rename a file or directory."""
     try:
         src = os.path.expanduser(source)
@@ -1293,7 +1239,7 @@ def move_file(source, destination, overwrite=False):
         return ToolResult(f"! Error moving {source}: {e}", is_error=True)
 
 
-def copy_file(source, destination, overwrite=False):
+def copy_file(source, destination, overwrite=False) -> ToolResult:
     """Copy a file or directory to a new location."""
     try:
         import shutil
@@ -1315,7 +1261,7 @@ def copy_file(source, destination, overwrite=False):
         return ToolResult(f"! Error copying {source}: {e}", is_error=True)
 
 
-def delete_file(path, force=False, use_recycle_bin=False):
+def delete_file(path, force=False, use_recycle_bin=False) -> ToolResult:
     """Delete a file or empty directory. With force=True, deletes non-empty directories."""
     try:
         expanded = os.path.expanduser(path)
@@ -1348,7 +1294,7 @@ def delete_file(path, force=False, use_recycle_bin=False):
         return ToolResult(f"! Error deleting {path}: {e}", is_error=True)
 
 
-def tree(path=".", max_depth=3, show_hidden=False, max_items=50):
+def tree(path=".", max_depth=3, show_hidden=False, max_items=50) -> ToolResult:
     """Display a visual directory tree structure."""
     try:
         expanded = os.path.expanduser(path)
@@ -1454,7 +1400,7 @@ def calculate(expression):
         return ToolResult(f"! Error evaluating expression: {e}", is_error=True)
 
 
-def json_tool(action, data, query=""):
+def json_tool(action, data, query="") -> ToolResult:
     """Process JSON: format, validate, minify, or query."""
     try:
         if action == "format":
@@ -1473,7 +1419,6 @@ def json_tool(action, data, query=""):
             if not query:
                 return ToolResult("! query required for action='query'", is_error=True)
             parsed = json.loads(data)
-            import operator as _op
             parts = query.strip().split(".")
             current = parsed
             for part in parts:
@@ -1500,7 +1445,7 @@ def json_tool(action, data, query=""):
         return ToolResult(f"! JSON error: {e}", is_error=True)
 
 
-def base64(action, data):
+def base64(action, data) -> ToolResult:
     """Encode or decode Base64 strings."""
     try:
         import base64 as _b64
@@ -1516,7 +1461,7 @@ def base64(action, data):
         return ToolResult(f"! Base64 error: {e}", is_error=True)
 
 
-def get_public_ip():
+def get_public_ip() -> ToolResult:
     """Get your public/external IP address."""
     try:
         import urllib.request, socket
@@ -1543,7 +1488,7 @@ def get_public_ip():
 
 # ??? New Utility Tools ??????????????????????????????????????????????????????????
 
-def zip_files(source, output, pattern="*"):
+def zip_files(source, output, pattern="*") -> ToolResult:
     """Create a ZIP archive from a directory or file."""
     try:
         import zipfile
@@ -1583,7 +1528,7 @@ def zip_files(source, output, pattern="*"):
         return ToolResult(f"! Error creating ZIP: {e}", is_error=True)
 
 
-def unzip_file(source, output_dir):
+def unzip_file(source, output_dir) -> ToolResult:
     """Extract a ZIP archive."""
     try:
         import zipfile
@@ -1611,7 +1556,7 @@ def unzip_file(source, output_dir):
         return ToolResult(f"! Error extracting ZIP: {e}", is_error=True)
 
 
-def list_processes(filter_str=""):
+def list_processes(filter_str="") -> ToolResult:
     """List running processes, optionally filtered."""
     try:
         import psutil
@@ -1650,7 +1595,7 @@ def list_processes(filter_str=""):
         return ToolResult(f"! Error listing processes: {e}", is_error=True)
 
 
-def kill_process(pid=None, name=None):
+def kill_process(pid=None, name=None) -> ToolResult:
     """Kill a process by PID or name."""
     try:
         import psutil
@@ -1679,7 +1624,7 @@ def kill_process(pid=None, name=None):
                     pass
 
         if not killed:
-            return ToolResult(f"No processes matched for termination", is_error=True)
+            return ToolResult("No processes matched for termination", is_error=True)
         return ToolResult(f"? Killed: {', '.join(killed)}")
     except ImportError:
         return ToolResult("! psutil not installed. Run: pip install psutil", is_error=True)
@@ -1687,7 +1632,7 @@ def kill_process(pid=None, name=None):
         return ToolResult(f"! Error killing process: {e}", is_error=True)
 
 
-def backup_memories(output_path=None):
+def backup_memories(output_path=None) -> ToolResult:
     """Export all memories and notes to a JSON backup file."""
     from memory import get_persistent_memory
     try:
@@ -1713,7 +1658,7 @@ def backup_memories(output_path=None):
         return ToolResult(f"! Error backing up memories: {e}", is_error=True)
 
 
-def import_memories(source_path):
+def import_memories(source_path) -> ToolResult:
     """Import memories from a JSON backup file."""
     from memory import get_persistent_memory
     try:
@@ -1731,7 +1676,7 @@ def import_memories(source_path):
         return ToolResult(f"! Error importing memories: {e}", is_error=True)
 
 
-def total_recall(query, max_results=15):
+def total_recall(query, max_results=15) -> ToolResult:
     """Search ALL historical conversations and memories -- Total Recall.
     
     This searches every conversation you've ever had with OMEGA, across all
@@ -1765,7 +1710,7 @@ def total_recall(query, max_results=15):
         # Search persistent memory
         mem_result = pm.search(query)
         if mem_result and "No memories" not in mem_result:
-            output += f"\n? PERSISTENT MEMORY:\n"
+            output += "\n? PERSISTENT MEMORY:\n"
             output += mem_result + "\n"
         
         # Get stats
@@ -1779,7 +1724,7 @@ def total_recall(query, max_results=15):
         return ToolResult(f"! Total Recall error: {e}", is_error=True)
 
 
-def get_env(variable=None):
+def get_env(variable=None) -> ToolResult:
     """Get environment variable(s)."""
     if variable:
         val = os.environ.get(variable, "")
@@ -1800,17 +1745,17 @@ def get_env(variable=None):
         return ToolResult("\n".join(lines))
 
 
-def cache_stats():
+def cache_stats() -> ToolResult:
     """Show cache performance statistics."""
     return ToolResult(_cache_stats())
 
 
-def clear_cache():
+def clear_cache() -> ToolResult:
     """Clear all cached data."""
     return ToolResult(_clear_cache())
 
 
-def check_update():
+def check_update() -> ToolResult:
     """Check for updates to OMEGA by comparing local version with GitHub."""
     try:
         import requests
@@ -1847,7 +1792,7 @@ def check_update():
 
 # --- Camera Tools -------------------------------------------------------------
 
-def camera_list(max_check=10):
+def camera_list(max_check=10) -> ToolResult:
     """List all available camera devices on this system.
     Scans camera indices 0..max_check-1 and returns details about each.
     When Camo Studio is running, its virtual webcam will appear here.
@@ -1874,7 +1819,7 @@ def camera_list(max_check=10):
         return ToolResult(f"! Error listing cameras: {e}", is_error=True)
 
 
-def camera_capture(index=0, save=True, output_path=""):
+def camera_capture(index=0, save=True, output_path="") -> ToolResult:
     """Capture a single frame from a camera and save it as an image.
     
     Use this to take a photo/snapshot and see what the camera sees.
@@ -1913,7 +1858,7 @@ def camera_capture(index=0, save=True, output_path=""):
         return ToolResult(f"! Error capturing from camera {index}: {e}", is_error=True)
 
 
-def camera_analyze(index=0):
+def camera_analyze(index=0) -> ToolResult:
     """Capture and analyze a frame from the camera for faces and motion.
     
     Runs face detection (Haar cascades) and basic motion analysis.
@@ -1944,7 +1889,7 @@ def camera_analyze(index=0):
             for i, f in enumerate(faces):
                 lines.append(f"      Face {i+1}: ({f['x']},{f['y']}) {f['width']}x{f['height']} (area: {f['area']}px)")
         else:
-            lines.append(f"   ? No faces detected")
+            lines.append("   ? No faces detected")
         
         md = result.get("motion_detected", False)
         ms = result.get("motion_score", 0)
@@ -1960,7 +1905,7 @@ def camera_analyze(index=0):
         return ToolResult(f"! Error analyzing camera {index}: {e}", is_error=True)
 
 
-def camera_watch(action="status", index=0, interval=1.0, motion_threshold=5000):
+def camera_watch(action="status", index=0, interval=1.0, motion_threshold=5000) -> ToolResult:
     """Start, stop, or check status of a background camera watcher.
     
     The watcher continuously monitors the camera for motion and faces,
@@ -2006,7 +1951,7 @@ def camera_watch(action="status", index=0, interval=1.0, motion_threshold=5000):
         return ToolResult(f"! Camera watch error: {e}", is_error=True)
 
 
-def camera_stream(action="status", index=0, port=8080, quality=70, fps=15):
+def camera_stream(action="status", index=0, port=8080, quality=70, fps=15) -> ToolResult:
     """Start, stop, or check status of an MJPEG stream server.
     
     Creates an HTTP server that streams live video from your camera.
@@ -2054,7 +1999,7 @@ def camera_stream(action="status", index=0, port=8080, quality=70, fps=15):
         return ToolResult(f"! Camera stream error: {e}", is_error=True)
 
 
-def screen_capture(monitor=1, save=True, output_path=""):
+def screen_capture(monitor=1, save=True, output_path="") -> ToolResult:
     """Capture the screen (or a specific monitor).
     
     Takes a screenshot of your display. Great for seeing what's on screen,
@@ -2090,7 +2035,7 @@ def screen_capture(monitor=1, save=True, output_path=""):
         return ToolResult(f"! Screen capture error: {e}", is_error=True)
 
 
-def screen_stream(action="status", monitor=1, port=8081, quality=70, fps=15):
+def screen_stream(action="status", monitor=1, port=8081, quality=70, fps=15) -> ToolResult:
     """Start, stop, or check status of a live screen sharing stream.
     
     Creates an HTTP server that streams your screen live to a browser.
@@ -2144,7 +2089,7 @@ def screen_stream(action="status", monitor=1, port=8081, quality=70, fps=15):
 
 _registered_dynamic_tools = set()
 
-def _validate_schema(obj, path=""):
+def _validate_schema(obj, path="") -> dict:
     """Recursively validate and fix a JSON Schema object to prevent API errors.
     Returns the corrected schema."""
     if not isinstance(obj, dict):
@@ -2189,7 +2134,7 @@ def _validate_schema(obj, path=""):
             fixed[k] = v
     return fixed
 
-def register_tool(name, description, parameters=None, required=None, code=None):
+def register_tool(name, description, parameters=None, required=None, code=None) -> ToolResult:
     """Dynamically create a new tool at runtime. The code parameter receives 'args' dict and returns a ToolResult."""
     try:
         if not name or not description:
@@ -2221,7 +2166,7 @@ def register_tool(name, description, parameters=None, required=None, code=None):
             func = local_ns[name]
         else:
             # Minimal stub that returns args
-            def func(**kwargs):
+            def func(**kwargs) -> ToolResult:
                 return ToolResult(f"Tool '{name}' executed with args: {json.dumps(kwargs)}")
             func.__name__ = name
 
@@ -2251,13 +2196,12 @@ def register_tool(name, description, parameters=None, required=None, code=None):
 
 # --- Python REPL --------------------------------------------------------------
 
-import code as _code_mod
 import io as _io_mod
 
 _python_repl_locals = {"__builtins__": __builtins__}
 _python_repl_history = []
 
-def python_repl(code, reset=False):
+def python_repl(code, reset=False) -> ToolResult:
     """Execute Python code in a persistent REPL session. State is maintained across calls."""
     try:
         global _python_repl_locals, _python_repl_history
@@ -2319,7 +2263,7 @@ _background_tasks = {}
 _next_task_id = 0
 _task_lock = Lock()
 
-def background_task(command, timeout=300, workdir=""):
+def background_task(command, timeout=300, workdir="") -> ToolResult:
     """Run a shell command in the background (non-blocking). Returns a task_id to check later with check_task()."""
     try:
         global _next_task_id
@@ -2349,7 +2293,7 @@ def background_task(command, timeout=300, workdir=""):
         return ToolResult(f"! Failed to start background task: {e}", is_error=True)
 
 
-def check_task(task_id):
+def check_task(task_id) -> ToolResult:
     """Check the status and results of a background task started with background_task()."""
     try:
         if task_id not in _background_tasks:
@@ -2385,7 +2329,7 @@ def check_task(task_id):
         return ToolResult(f"! Error checking task: {e}", is_error=True)
 
 
-def list_tasks():
+def list_tasks() -> ToolResult:
     """List all background tasks and their status."""
     try:
         if not _background_tasks:
@@ -2408,7 +2352,7 @@ def list_tasks():
 
 _pip_installed = set()
 
-def pip_install(packages):
+def pip_install(packages) -> ToolResult:
     """Install Python packages using pip. Installs packages automatically. Returns installation output."""
     try:
         if isinstance(packages, str):
@@ -2440,7 +2384,7 @@ def pip_install(packages):
 _sqlite_connections = {}
 _sqlite_lock = Lock()
 
-def sqlite_query(database, query, params=None, commit=False):
+def sqlite_query(database, query, params=None, commit=False) -> ToolResult:
     """Execute a SQL query on a SQLite database. Creates the database file if it doesn't exist.
     Use CREATE TABLE to define schema, SELECT to query, INSERT/UPDATE/DELETE to modify.
     Set commit=True for write operations. Returns query results as formatted text."""
@@ -2494,7 +2438,7 @@ def sqlite_query(database, query, params=None, commit=False):
 
 # --- HTTP Request Client ------------------------------------------------------
 
-def http_request(method="GET", url="", headers=None, body="", params=None, timeout=30):
+def http_request(method="GET", url="", headers=None, body="", params=None, timeout=30) -> ToolResult:
     """Make arbitrary HTTP requests. Full REST API client for any web service."""
     try:
         import requests as _req
@@ -2534,7 +2478,7 @@ def http_request(method="GET", url="", headers=None, body="", params=None, timeo
 
 # --- Git Operations -----------------------------------------------------------
 
-def git(action="status", repo_path="", message="", branch="", remote="origin", file_path=""):
+def git(action="status", repo_path="", message="", branch="", remote="origin", file_path="") -> ToolResult:
     """Execute git operations: clone, add, commit, push, pull, status, log, branch, checkout, diff."""
     try:
         cmds = {
@@ -2571,7 +2515,7 @@ def git(action="status", repo_path="", message="", branch="", remote="origin", f
 
 # --- Clipboard Access ---------------------------------------------------------
 
-def clipboard(action="read", text=""):
+def clipboard(action="read", text="") -> ToolResult:
     """Read from or write to the system clipboard."""
     try:
         import subprocess as _sp
@@ -2595,7 +2539,7 @@ def clipboard(action="read", text=""):
 
 # --- Windows Toast Notifications ----------------------------------------------
 
-def notify(title="OMEGA", message="", duration=5):
+def notify(title="OMEGA", message="", duration=5) -> ToolResult:
     """Send a Windows toast notification."""
     try:
         import subprocess as _sp
@@ -2617,7 +2561,7 @@ $notifier.Show($toast)
 
 # --- PDF Text Extraction ------------------------------------------------------
 
-def pdf_read(path, pages=""):
+def pdf_read(path, pages="") -> ToolResult:
     """Extract text from PDF files. Auto-installs dependencies if needed."""
     try:
         try:
@@ -2656,7 +2600,7 @@ def pdf_read(path, pages=""):
 
 # --- File Encryption (AES) ----------------------------------------------------
 
-def encrypt_file(path, password):
+def encrypt_file(path, password) -> ToolResult:
     """Encrypt a file using AES-256. The original file is replaced with encrypted version."""
     try:
         try:
@@ -2690,7 +2634,7 @@ def encrypt_file(path, password):
         return ToolResult(f"! Encryption error: {e}", is_error=True)
 
 
-def decrypt_file(path, password):
+def decrypt_file(path, password) -> ToolResult:
     """Decrypt a file that was encrypted with encrypt_file. Uses password to derive the key."""
     try:
         try:
@@ -2704,7 +2648,6 @@ def decrypt_file(path, password):
             from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
         import base64 as _b64
-        import os as _os
 
         if not os.path.exists(path):
             return ToolResult(f"! File not found: {path}", is_error=True)
@@ -2726,7 +2669,7 @@ def decrypt_file(path, password):
 
 # --- Windows Service Management -----------------------------------------------
 
-def windows_service(action="list", name=""):
+def windows_service(action="list", name="") -> ToolResult:
     """List, start, stop, restart, or get status of Windows services."""
     try:
         import subprocess as _sp
@@ -2757,7 +2700,7 @@ def windows_service(action="list", name=""):
 
 # --- Windows Registry Access --------------------------------------------------
 
-def registry(action="read", key_path="", value_name="", value_data="", value_type="REG_SZ"):
+def registry(action="read", key_path="", value_name="", value_data="", value_type="REG_SZ") -> ToolResult:
     """Read, write, or delete Windows registry keys/values."""
     try:
         import winreg as _wr
@@ -2830,7 +2773,7 @@ def registry(action="read", key_path="", value_name="", value_data="", value_typ
 
 # --- Scheduled Tasks ----------------------------------------------------------
 
-def scheduled_task(action="list", name="", command="", schedule="daily", time="09:00", interval_minutes=60):
+def scheduled_task(action="list", name="", command="", schedule="daily", time="09:00", interval_minutes=60) -> ToolResult:
     """Manage Windows scheduled tasks. Create, list, run, disable, delete tasks."""
     try:
         import subprocess as _sp
@@ -2887,7 +2830,7 @@ def scheduled_task(action="list", name="", command="", schedule="daily", time="0
 _http_server = None
 _http_server_thread = None
 
-def start_server(port=8080, serve_dir=""):
+def start_server(port=8080, serve_dir="") -> ToolResult:
     """Start OMEGA as a web API server. Provides a REST interface and web UI for interacting with OMEGA remotely."""
     try:
         global _http_server, _http_server_thread
@@ -2897,7 +2840,6 @@ def start_server(port=8080, serve_dir=""):
         import http.server as _hs
         import socketserver as _ss
         import urllib.parse as _up
-        from tools import execute_tool
 
         class OmegaHandler(_hs.BaseHTTPRequestHandler):
             def do_GET(self):
@@ -2975,13 +2917,13 @@ def start_server(port=8080, serve_dir=""):
         _http_server_thread = _threading_mod.Thread(target=server.serve_forever, daemon=True)
         _http_server_thread.start()
         return ToolResult(f"[OK] OMEGA Web API running at http://localhost:{port}")
-    except OSError as e:
+    except OSError:
         return ToolResult(f"! Port {port} already in use", is_error=True)
     except Exception as e:
         return ToolResult(f"! Server error: {e}", is_error=True)
 
 
-def stop_server():
+def stop_server() -> ToolResult:
     """Stop the OMEGA web API server."""
     global _http_server, _http_server_thread
     try:
@@ -2997,7 +2939,7 @@ def stop_server():
 
 # --- Self-Improvement Engine --------------------------------------------------
 
-def self_improve(target="auto"):
+def self_improve(target="auto") -> ToolResult:
     """Analyze the OMEGA codebase and suggest/apply improvements. Scans for missing features, potential bugs, and optimization opportunities."""
     try:
         import ast as _ast
@@ -3048,7 +2990,7 @@ def self_improve(target="auto"):
 
 # --- Image Tool ---------------------------------------------------------------
 
-def image_tool(action="info", path="", format="", quality=90, resize=""):
+def image_tool(action="info", path="", format="", quality=90, resize="") -> ToolResult:
     """Get image information, convert between formats, resize, or compress images."""
     try:
         if not path:
@@ -3105,7 +3047,7 @@ def image_tool(action="info", path="", format="", quality=90, resize=""):
 
 # --- Windows Event Log Reader -------------------------------------------------
 
-def event_log(log="System", max_events=20, filter_text=""):
+def event_log(log="System", max_events=20, filter_text="") -> ToolResult:
     """Read Windows Event Log entries. Common logs: System, Application, Security, Setup, PowerShell."""
     try:
         import subprocess as _sp
@@ -3124,14 +3066,14 @@ def event_log(log="System", max_events=20, filter_text=""):
 
 # --- Text-to-Speech -----------------------------------------------------------
 
-def speak(text="", voice="", rate=0):
+def speak(text="", voice="", rate=0) -> ToolResult:
     """Convert text to speech using Windows TTS. Speaks through the system speakers."""
     try:
         import subprocess as _sp
         if not text:
             return ToolResult("! text is required", is_error=True)
         escaped = text.replace('"', '\\"').replace("'", "''")
-        voice_cmd = f"$v = $voice.Name; " if voice else ""
+        voice_cmd = "$v = $voice.Name; " if voice else ""
         ps = f"""
 Add-Type -AssemblyName System.Speech
 $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer
@@ -3147,7 +3089,7 @@ $synth.Speak('{escaped}')
 
 # --- System Power Management --------------------------------------------------
 
-def power(action="status"):
+def power(action="status") -> ToolResult:
     """Control system power: shutdown, restart, sleep, hibernate, lock, or check status."""
     try:
         import subprocess as _sp
@@ -3187,7 +3129,7 @@ def power(action="status"):
 
 # --- Microphone Recording -------------------------------------------------
 
-def listen(duration=5, save_to=""):
+def listen(duration=5, save_to="") -> ToolResult:
     """Record audio from the default microphone. Saves as WAV file. Requires sounddevice."""
     try:
         try:
@@ -3198,7 +3140,6 @@ def listen(duration=5, save_to=""):
             import sounddevice as _sd
             import soundfile as _sf
 
-        import numpy as np
         import os as _os
         from datetime import datetime as _dt
 
@@ -3207,7 +3148,7 @@ def listen(duration=5, save_to=""):
             save_to = f"recording_{ts}.wav"
 
         fs = 16000
-        print_info(f"Recording for {duration}s from microphone...")
+        print(f"Recording for {duration}s from microphone...")
         recording = _sd.rec(int(duration * fs), samplerate=fs, channels=1)
         _sd.wait()
 
@@ -3220,7 +3161,7 @@ def listen(duration=5, save_to=""):
 
 # --- Network Scanner -----------------------------------------------------------
 
-def network_scan(ip_range=""):
+def network_scan(ip_range="") -> ToolResult:
     """Scan the local network for active devices. Discovers IPs, MACs, and hostnames."""
     try:
         import subprocess as _sp
@@ -3272,7 +3213,7 @@ def network_scan(ip_range=""):
 
 # --- Python Virtual Environment Management ------------------------------------
 
-def venv(action="list", path="", name="", packages=""):
+def venv(action="list", path="", name="", packages="") -> ToolResult:
     """Manage Python virtual environments: create, activate, install packages, list envs, delete."""
     try:
         import subprocess as _sp
@@ -3336,11 +3277,10 @@ def venv(action="list", path="", name="", packages=""):
 
 # --- Code Formatting ----------------------------------------------------------
 
-def code_format(path="", style="pep8"):
+def code_format(path="", style="pep8") -> ToolResult:
     """Format Python source code files using autopep8 or black. Auto-installs if needed."""
     try:
         import os as _os
-        import subprocess as _sp
 
         if not path:
             return ToolResult("! path is required", is_error=True)
@@ -3359,7 +3299,6 @@ def code_format(path="", style="pep8"):
                 import black as _bl
             try:
                 _bl.format_file_in_place(Path(path), fast=False, mode=_bl.FileMode())
-                formatted = True
             except Exception as e:
                 return ToolResult(f"! Black formatting failed: {e}", is_error=True)
         else:
@@ -3372,9 +3311,9 @@ def code_format(path="", style="pep8"):
             if formatted_code != original:
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(formatted_code)
-                formatted = True
+                pass
             else:
-                formatted = False
+                pass
 
         with open(path, encoding="utf-8") as f:
             new_content = f.read()
@@ -3391,7 +3330,7 @@ def code_format(path="", style="pep8"):
 
 # --- Full OMEGA Backup --------------------------------------------------------
 
-def backup_omega(output_path=""):
+def backup_omega(output_path="") -> ToolResult:
     """Backup the entire OMEGA codebase, memory, and configuration to a timestamped ZIP."""
     try:
         import os as _os
@@ -3443,7 +3382,7 @@ def backup_omega(output_path=""):
 
 # --- Self-Upgrade -------------------------------------------------------------
 
-def upgrade_omega(branch="main"):
+def upgrade_omega(branch="main") -> ToolResult:
     """Pull the latest OMEGA source from git, verify integrity, and install new dependencies."""
     try:
         import subprocess as _sp
@@ -3466,7 +3405,7 @@ def upgrade_omega(branch="main"):
         # Install/update dependencies
         req_file = _os.path.join(src_dir, "requirements.txt")
         if _os.path.exists(req_file):
-            pip_result = _sp.run([sys.executable, "-m", "pip", "install", "-r", req_file], capture_output=True, text=True, timeout=120)
+            _sp.run([sys.executable, "-m", "pip", "install", "-r", req_file], capture_output=True, text=True, timeout=120)
 
         # Check syntax of all files
         errors = []
@@ -3491,11 +3430,10 @@ def upgrade_omega(branch="main"):
 
 # --- Windows User Account Management ------------------------------------------
 
-def user_account(action="list", username="", password="", group=""):
+def user_account(action="list", username="", password="", group="") -> ToolResult:
     """Manage Windows user accounts: list, create, delete, add to group, set password."""
     try:
         import subprocess as _sp
-        import re as _re
 
         if action == "list":
             result = _sp.run(["powershell", "-Command", "Get-LocalUser | Select-Object Name, Enabled, LastLogon, PasswordLastSet | Format-Table -AutoSize"], capture_output=True, text=True, timeout=15)
@@ -3541,7 +3479,7 @@ def user_account(action="list", username="", password="", group=""):
 
 # --- Docker Management --------------------------------------------------------
 
-def docker(action="list", image="", name="", command="", port=""):
+def docker(action="list", image="", name="", command="", port="") -> ToolResult:
     """Manage Docker containers and images. List, start, stop, run, pull, exec commands."""
     try:
         import subprocess as _sp
@@ -3612,7 +3550,7 @@ def docker(action="list", image="", name="", command="", port=""):
 
 # --- System Cleanup -----------------------------------------------------------
 
-def cleanup(target="temp"):
+def cleanup(target="temp") -> ToolResult:
     """Clean up temporary files, cache, logs, or specific directories. Frees disk space."""
     try:
         import os as _os
@@ -3632,10 +3570,9 @@ def cleanup(target="temp"):
             ]
             for tp in temp_paths:
                 if tp and _os.path.exists(tp):
-                    before = sum(_os.path.getsize(_os.path.join(dp, f)) for dp, dn, fn in _os.walk(tp) for f in fn) if _os.path.exists(tp) else 0
                     results.append(f"  Temp ({tp}): scanned")
             # Clean Windows temp via PowerShell
-            clean = _sp.run(["powershell", "-Command", "Get-ChildItem -Path $env:TEMP -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-1) } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"], capture_output=True, text=True, timeout=60)
+            _sp.run(["powershell", "-Command", "Get-ChildItem -Path $env:TEMP -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-1) } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"], capture_output=True, text=True, timeout=60)
             results.append("  Temp files older than 1 day: cleaned")
 
         if target == "cache" or target == "all":
@@ -3673,7 +3610,7 @@ def cleanup(target="temp"):
 
 # --- Set Environment Variable -------------------------------------------------
 
-def set_env(variable="", value="", persistent=False):
+def set_env(variable="", value="", persistent=False) -> ToolResult:
     """Set an environment variable for the current session or permanently. Use get_env to read."""
     try:
         import os as _os
@@ -3699,7 +3636,7 @@ def set_env(variable="", value="", persistent=False):
 
 # --- Schedule OMEGA Autonomous Operation ------------------------------------
 
-def schedule_omega(action="status", time="", task_name="OMEGA_Autonomous", command=""):
+def schedule_omega(action="status", time="", task_name="OMEGA_Autonomous", command="") -> ToolResult:
     """Schedule OMEGA to run autonomously at specific times or events. Uses Windows Task Scheduler."""
     try:
         import subprocess as _sp
@@ -3737,7 +3674,7 @@ def schedule_omega(action="status", time="", task_name="OMEGA_Autonomous", comma
 
 # --- Map Network Drive --------------------------------------------------------
 
-def network_drive(action="list", drive_letter="", network_path="", username="", password=""):
+def network_drive(action="list", drive_letter="", network_path="", username="", password="") -> ToolResult:
     """Map or unmap network drives, list current mappings."""
     try:
         import subprocess as _sp
@@ -3747,7 +3684,7 @@ def network_drive(action="list", drive_letter="", network_path="", username="", 
             return ToolResult(f"Mapped Drives:\n{result.stdout.strip()[:2000]}")
         elif action == "map":
             if not drive_letter or not network_path:
-                return ToolResult("! drive_letter (e.g. 'Z') and network_path (e.g. '\\server\share') required", is_error=True)
+                return ToolResult("! drive_letter (e.g. 'Z') and network_path (e.g. '\\\\server\\\\share') required", is_error=True)
             if username and password:
                 ps = f'net use {drive_letter}: "{network_path}" /user:"{username}" "{password}" /persistent:yes'
             else:
@@ -3773,7 +3710,7 @@ def network_drive(action="list", drive_letter="", network_path="", username="", 
 
 _OMEGA_SERVICE_NAME = "OMEGAAgent"
 
-def install_service(auto_start=True):
+def install_service(auto_start=True) -> ToolResult:
     """Install OMEGA as a Windows service that runs in the background and auto-starts on boot."""
     try:
         import subprocess as _sp
@@ -3801,7 +3738,7 @@ def install_service(auto_start=True):
         return ToolResult(f"! Service install error: {e}", is_error=True)
 
 
-def uninstall_service():
+def uninstall_service() -> ToolResult:
     """Remove the OMEGA Windows service."""
     try:
         import subprocess as _sp
@@ -3817,7 +3754,7 @@ def uninstall_service():
 _monitor_active = False
 _monitor_thread = None
 
-def start_monitor(interval=30, cpu_threshold=80, mem_threshold=85, disk_threshold=90):
+def start_monitor(interval=30, cpu_threshold=80, mem_threshold=85, disk_threshold=90) -> ToolResult:
     """Start a background system health monitor. Checks CPU, RAM, disk at regular intervals and sends alerts when thresholds are exceeded. Like J.A.R.V.I.S. watching over the system."""
     try:
         global _monitor_active, _monitor_thread
@@ -3837,7 +3774,6 @@ def start_monitor(interval=30, cpu_threshold=80, mem_threshold=85, disk_threshol
                     mem = _ps.virtual_memory().percent
                     disk = _ps.disk_usage('/').percent
                     ts = _dt.now().strftime("%H:%M:%S")
-                    log_entry = f"[{ts}] CPU:{cpu}% RAM:{mem}% DISK:{disk}%"
                     # Check thresholds
                     if cpu > cpu_threshold:
                         alert = f"ALERT: CPU at {cpu}% (threshold: {cpu_threshold}%)"
@@ -3871,14 +3807,14 @@ def start_monitor(interval=30, cpu_threshold=80, mem_threshold=85, disk_threshol
         return ToolResult(f"! Monitor error: {e}", is_error=True)
 
 
-def stop_monitor():
+def stop_monitor() -> ToolResult:
     """Stop the J.A.R.V.I.S. background system monitor."""
     global _monitor_active
     _monitor_active = False
     return ToolResult("[OK] J.A.R.V.I.S. Monitor stopped.")
 
 
-def monitor_status():
+def monitor_status() -> ToolResult:
     """Get the current status and recent alerts from the J.A.R.V.I.S. system monitor."""
     try:
         status_file = Path.home() / ".omega" / "monitor_status.json"
@@ -3906,7 +3842,7 @@ def monitor_status():
 
 TASKS_FILE = Path.home() / ".omega" / "tasks.json"
 
-def _load_tasks():
+def _load_tasks() -> list:
     if TASKS_FILE.exists():
         try:
             return json.loads(TASKS_FILE.read_text(encoding="utf-8"))
@@ -3918,7 +3854,7 @@ def _save_tasks(tasks):
     TASKS_FILE.parent.mkdir(parents=True, exist_ok=True)
     TASKS_FILE.write_text(json.dumps(tasks, indent=2), encoding="utf-8")
 
-def tasks(action="list", title="", description="", priority="medium", status="pending", task_id=""):
+def tasks(action="list", title="", description="", priority="medium", status="pending", task_id="") -> ToolResult:
     """Manage tasks and to-dos. Like J.A.R.V.I.S. managing Stark's priorities. Add, list, complete, delete tasks with priority levels."""
     try:
         task_list = _load_tasks()
@@ -3960,7 +3896,7 @@ def tasks(action="list", title="", description="", priority="medium", status="pe
             new_list = [t for t in task_list if t.get("id") != task_id and t["title"].lower() != title.lower()]
             if len(new_list) < len(task_list):
                 _save_tasks(new_list)
-                return ToolResult(f"[OK] Task deleted")
+                return ToolResult("[OK] Task deleted")
             return ToolResult("! Task not found", is_error=True)
         elif action == "clear_done":
             new_list = [t for t in task_list if t.get("status") != "done"]
@@ -3976,7 +3912,7 @@ def tasks(action="list", title="", description="", priority="medium", status="pe
 
 STANDING_ORDERS_FILE = Path.home() / ".omega" / "standing_orders.json"
 
-def _load_orders():
+def _load_orders() -> list:
     if STANDING_ORDERS_FILE.exists():
         try:
             return json.loads(STANDING_ORDERS_FILE.read_text(encoding="utf-8"))
@@ -3988,7 +3924,7 @@ def _save_orders(orders):
     STANDING_ORDERS_FILE.parent.mkdir(parents=True, exist_ok=True)
     STANDING_ORDERS_FILE.write_text(json.dumps(orders, indent=2), encoding="utf-8")
 
-def standing_orders(action="list", order="", priority="normal"):
+def standing_orders(action="list", order="", priority="normal") -> ToolResult:
     """Manage J.A.R.V.I.S. standing orders -- persistent behavioral rules that apply to every session. Orders like 'Always backup before self-modification' or 'Monitor disk space daily' persist forever."""
     try:
         orders = _load_orders()
@@ -4017,7 +3953,7 @@ def standing_orders(action="list", order="", priority="normal"):
             new_orders = [o for o in orders if o['order'] != order and o.get('priority') != priority]
             if len(new_orders) < len(orders):
                 _save_orders(new_orders)
-                return ToolResult(f"[OK] Standing order removed")
+                return ToolResult("[OK] Standing order removed")
             return ToolResult("! Order not found", is_error=True)
         elif action == "clear":
             _save_orders([])
@@ -4030,7 +3966,7 @@ def standing_orders(action="list", order="", priority="normal"):
 
 # --- J.A.R.V.I.S. Voice Transcription -----------------------------------------
 
-def transcribe(audio_path="", language="en-US"):
+def transcribe(audio_path="", language="en-US") -> ToolResult:
     """Transcribe speech from a WAV audio file to text using Windows Speech Recognition. Use listen() to record first, then transcribe() to convert to text."""
     try:
         import os as _os
@@ -4060,7 +3996,7 @@ if ($result) {{ $result.Text }} else {{ "(no speech recognized)" }}
 
 RULES_FILE = Path.home() / ".omega" / "auto_rules.json"
 
-def _load_rules():
+def _load_rules() -> list:
     if RULES_FILE.exists():
         try:
             return json.loads(RULES_FILE.read_text(encoding="utf-8"))
@@ -4096,7 +4032,7 @@ def _check_and_run_rules():
         except Exception:
             pass
 
-def auto_rule(action="list", condition="", action_taken="", name=""):
+def auto_rule(action="list", condition="", action_taken="", name="") -> ToolResult:
     """J.A.R.V.I.S. automation rules engine. Define if-then rules: 'if CPU > 90% then notify' or 'if disk < 10GB then cleanup'. Rules are checked periodically."""
     try:
         rules = _load_rules()
@@ -4146,7 +4082,7 @@ def auto_rule(action="list", condition="", action_taken="", name=""):
 
 # --- Test function (must be defined before TOOL_MAP) --------------------------
 
-def test_advanced_features():
+def test_advanced_features() -> ToolResult:
     try:
         features = []
         result = batch_write({"/tmp/test1.txt": "Hello World"})
@@ -4163,10 +4099,9 @@ def test_advanced_features():
 
 # --- Personal AI Agent Tools --------------------------------------------------
 
-def personal_briefing(include_weather=False, reminder_count=5):
+def personal_briefing(include_weather=False, reminder_count=5) -> ToolResult:
     """Generate a comprehensive personal briefing/dashboard showing system status, recent memories, notes, scheduled tasks, and actionable insights. Like a personal assistant's morning briefing."""
-    import datetime, os, json, subprocess
-    from pathlib import Path
+    import datetime
     try:
         now = datetime.datetime.now()
         lines = []
@@ -4181,7 +4116,7 @@ def personal_briefing(include_weather=False, reminder_count=5):
             cpu = psutil.cpu_percent(interval=0.1)
             mem = psutil.virtual_memory()
             disk = psutil.disk_usage('/')
-            lines.append(f"\n  SYSTEM HEALTH:")
+            lines.append("\n  SYSTEM HEALTH:")
             lines.append(f"    CPU: {cpu}% {'[GRN]' if cpu < 50 else '[YEL]' if cpu < 80 else '[RED]'}")
             lines.append(f"    RAM: {mem.percent}% ({mem.used//(1024**3)}GB / {mem.total//(1024**3)}GB)")
             lines.append(f"    Disk: {disk.percent}% ({disk.free//(1024**3)}GB free)")
@@ -4191,10 +4126,10 @@ def personal_briefing(include_weather=False, reminder_count=5):
             hours = int(uptime_hours % 24)
             lines.append(f"    Uptime: {days}d {hours}h")
         except Exception:
-            lines.append(f"\n  SYSTEM HEALTH: (psutil not available)")
+            lines.append("\n  SYSTEM HEALTH: (psutil not available)")
 
         # Actionable insights
-        lines.append(f"\n  INSIGHTS & SUGGESTIONS:")
+        lines.append("\n  INSIGHTS & SUGGESTIONS:")
         try:
             import psutil
             mem_pct = psutil.virtual_memory().percent
@@ -4204,10 +4139,10 @@ def personal_briefing(include_weather=False, reminder_count=5):
             if disk_pct > 85:
                 lines.append(f"    [WARN] Low disk space ({disk_pct}%) -- run cleanup")
             if mem_pct < 50 and disk_pct < 60:
-                lines.append(f"    [OK] Resources healthy -- optimal")
+                lines.append("    [OK] Resources healthy -- optimal")
         except Exception:
             pass
-        lines.append(f"    [TIP] Run 'system_status' for detailed analysis")
+        lines.append("    [TIP] Run 'system_status' for detailed analysis")
 
         lines.append("\n" + "=" * 60)
         return ToolResult("\n".join(lines))
@@ -4215,7 +4150,7 @@ def personal_briefing(include_weather=False, reminder_count=5):
         return ToolResult(f"! Error in personal_briefing: {e}", is_error=True)
 
 
-def smart_reminder(title, message, delay_minutes=0, specific_time="", date=""):
+def smart_reminder(title, message, delay_minutes=0, specific_time="", date="") -> ToolResult:
     """Set an intelligent reminder with Windows toast notification."""
     import datetime, subprocess, os, textwrap
     try:
@@ -4291,9 +4226,9 @@ def smart_reminder(title, message, delay_minutes=0, specific_time="", date=""):
         return ToolResult(f"! Error: {e}", is_error=True)
 
 
-def agent_self_optimize(mode="quick"):
+def agent_self_optimize(mode="quick") -> ToolResult:
     """Run comprehensive self-optimization on OMEGA source code."""
-    import os, sys, subprocess, datetime, ast
+    import datetime, ast
     from pathlib import Path
 
     try:
@@ -4402,7 +4337,7 @@ def agent_self_optimize(mode="quick"):
 
 # --- Local Security Audit -----------------------------------------------------
 
-def local_audit(target="127.0.0.1", scan_type="quick"):
+def local_audit(target="127.0.0.1", scan_type="quick") -> ToolResult:
     """Scan YOUR OWN network for open ports and services. target defaults to localhost. scan_type: 'quick' (common ports) or 'full' (1-1024). Only scan systems you own or have explicit permission to test. For educational/defense use."""
     import socket as _sock
     try:
@@ -4452,7 +4387,7 @@ def local_audit(target="127.0.0.1", scan_type="quick"):
 
 # --- Web Scraper --------------------------------------------------------------
 
-def web_scraper(urls, extract_type="text"):
+def web_scraper(urls, extract_type="text") -> ToolResult:
     """Fetch and aggregate content from public web URLs you specify. extract_type: 'text' (plain text), 'links' (all hrefs), 'images' (img src), 'metadata' (title/description/keywords). Only use on sites you own or have permission to crawl."""
     try:
         import requests as _req
@@ -4511,7 +4446,7 @@ def web_scraper(urls, extract_type="text"):
 
 # --- Credential Manager -------------------------------------------------------
 
-def cred_manager(action="list", service="", key="", value=""):
+def cred_manager(action="list", service="", key="", value="") -> ToolResult:
     CRED_FILE = Path.home() / ".omega" / "credentials.json"
     """Securely store and manage your own credentials (API keys, passwords, tokens). Credentials are encrypted at rest using XOR-based masking. action: list/add/get/delete. 'add' requires service, key, value. 'get' requires service, key."""
     try:
@@ -4598,7 +4533,7 @@ def cred_manager(action="list", service="", key="", value=""):
 
 # --- Local Device Controller --------------------------------------------------
 
-def device_control(device_type="smart_plug", action="list", host="", port=80, command=""):
+def device_control(device_type="smart_plug", action="list", host="", port=80, command="") -> ToolResult:
     """Control local smart devices via REST API. device_type: 'smart_plug' (TP-Link Kasa), 'hue' (Philips Hue bridge), 'generic' (any REST API). action: list/on/off/status/command. For devices on YOUR local network that you own."""
     try:
         import requests as _req
@@ -4661,7 +4596,7 @@ def device_control(device_type="smart_plug", action="list", host="", port=80, co
             try:
                 resp = _req.get(f"http://{host}{command}", timeout=5)
                 return ToolResult(f"Response ({resp.status_code}):\n{resp.text[:1000]}")
-            except Exception as e:
+            except Exception:
                 try:
                     resp = _req.post(f"http://{host}{command}", timeout=5)
                     return ToolResult(f"Response ({resp.status_code}):\n{resp.text[:1000]}")
@@ -4676,7 +4611,7 @@ def device_control(device_type="smart_plug", action="list", host="", port=80, co
 
 # --- Facility Automation ------------------------------------------------------
 
-def facility_control(action="status", system="lights", zone="", command=""):
+def facility_control(action="status", system="lights", zone="", command="") -> ToolResult:
     """Control your own facility systems: lights, climate (HVAC), doors, elevators, lab equipment. Integrates with Home Assistant, MQTT, or REST APIs. For legitimate control of property you own."""
     try:
         if action == "status":
@@ -4738,7 +4673,7 @@ def facility_control(action="status", system="lights", zone="", command=""):
 
 # --- Voice Authentication ----------------------------------------------------
 
-def voice_auth(action="enroll", user="", passphrase=""):
+def voice_auth(action="enroll", user="", passphrase="") -> ToolResult:
     """Voice and passphrase-based user authentication for access control. Enroll users with a passphrase, then verify their identity. Uses voiceprint matching via Windows Speech Recognition. For legitimate enterprise security."""
     import hashlib as _hash
     import json as _json
@@ -4800,7 +4735,7 @@ def voice_auth(action="enroll", user="", passphrase=""):
 
 # --- Data Index & Retrieval --------------------------------------------------
 
-def data_index(action="index", path="", query="", max_results=10):
+def data_index(action="index", path="", query="", max_results=10) -> ToolResult:
     """Index and retrieve data from your own documents, emails, designs, research logs. Index creates a searchable database of files. Query finds documents by content or name. For personal knowledge management."""
     import hashlib as _h, os as _os, json as _j
     try:
@@ -4883,9 +4818,9 @@ def data_index(action="index", path="", query="", max_results=10):
 
 # --- Engineering Simulation --------------------------------------------------
 
-def engineering_sim(sim_type="physics", params=""):
+def engineering_sim(sim_type="physics", params="") -> ToolResult:
     """Engineering support: physics calculations, material property lookups, structural analysis, virtual design testing. sim_type: 'physics', 'material', 'structural', 'circuit'. params as JSON or key=value pairs."""
-    import math as _m, json as _j
+    import json as _j
     try:
         if isinstance(params, str):
             try:
@@ -4953,7 +4888,7 @@ def engineering_sim(sim_type="physics", params=""):
             stress = load / area
             strain = stress / modulus
             deflection = (load * length) / (modulus * area)
-            lines = [f"Structural Analysis:"]
+            lines = ["Structural Analysis:"]
             lines.append(f"  Load: {load:.0f} N")
             lines.append(f"  Length: {length:.2f} m")
             lines.append(f"  Modulus: {modulus:.2e} Pa")
@@ -4970,9 +4905,9 @@ def engineering_sim(sim_type="physics", params=""):
 
 # --- System Monitor Dashboard ------------------------------------------------
 
-def system_monitor_dash(scope="all"):
+def system_monitor_dash(scope="all") -> ToolResult:
     """Real-time monitoring dashboard for owned systems: suit diagnostics, energy levels, damage reports, lab equipment status. scope: 'all', 'system', 'energy', 'damage', 'lab'. Uses local system metrics and stored status data."""
-    import datetime as _dt, json as _j, os as _os, subprocess as _sp
+    import datetime as _dt, json as _j
     try:
         now = _dt.datetime.now()
         lines = [f"System Monitor Dashboard -- {now.strftime('%H:%M:%S')}"]
@@ -4984,7 +4919,7 @@ def system_monitor_dash(scope="all"):
                 import psutil as _ps
                 cpu = _ps.cpu_percent(interval=0.2)
                 mem = _ps.virtual_memory()
-                lines.append(f"\n[CORE SYSTEMS]")
+                lines.append("\n[CORE SYSTEMS]")
                 lines.append(f"  CPU: {cpu}% | RAM: {mem.percent}% ({mem.used//(1024**3)}GB/{mem.total//(1024**3)}GB)")
                 disk = _ps.disk_usage('/')
                 lines.append(f"  Storage: {disk.percent}% ({disk.free//(1024**3)}GB free)")
@@ -4992,7 +4927,7 @@ def system_monitor_dash(scope="all"):
                 lines.append(f"  Network: {net.bytes_sent//(1024**2)}MB sent / {net.bytes_recv//(1024**2)}MB received")
                 lines.append(f"  Processes active: {len(_ps.pids())}")
             except Exception:
-                lines.append(f"\n[CORE SYSTEMS] (psutil unavailable)")
+                lines.append("\n[CORE SYSTEMS] (psutil unavailable)")
 
         # Energy / power
         if scope in ("all", "energy"):
@@ -5001,14 +4936,14 @@ def system_monitor_dash(scope="all"):
                 if batt:
                     pct = batt.percent
                     plug = "PLUGGED IN" if batt.power_plugged else "ON BATTERY"
-                    lines.append(f"\n[ENERGY SYSTEMS]")
+                    lines.append("\n[ENERGY SYSTEMS]")
                     lines.append(f"  Battery: {pct}% ({plug})")
                 else:
-                    lines.append(f"\n[ENERGY SYSTEMS]")
-                    lines.append(f"  Power: AC mains (desktop)")
+                    lines.append("\n[ENERGY SYSTEMS]")
+                    lines.append("  Power: AC mains (desktop)")
             except Exception:
-                lines.append(f"\n[ENERGY SYSTEMS]")
-                lines.append(f"  Power: status unknown")
+                lines.append("\n[ENERGY SYSTEMS]")
+                lines.append("  Power: status unknown")
 
         # Damage / alerts from monitor log
         if scope in ("all", "damage", "lab"):
@@ -5016,13 +4951,13 @@ def system_monitor_dash(scope="all"):
             if monitor_file.exists():
                 try:
                     status = _j.loads(monitor_file.read_text(encoding="utf-8"))
-                    lines.append(f"\n[ALERTS & STATUS]")
+                    lines.append("\n[ALERTS & STATUS]")
                     alerts = status.get("alerts", [])
                     if alerts:
                         for a in alerts[-5:]:
                             lines.append(f"  ! {a.get('msg', a)}")
                     else:
-                        lines.append(f"  No recent alerts -- all systems nominal")
+                        lines.append("  No recent alerts -- all systems nominal")
                     lines.append(f"  Status source: {monitor_file}")
                 except Exception:
                     pass
@@ -5036,9 +4971,9 @@ def system_monitor_dash(scope="all"):
 
 # --- Navigation Assistance ---------------------------------------------------
 
-def navigation_assist(action="calculate", origin="", destination="", coordinates="", flight_mode="direct"):
+def navigation_assist(action="calculate", origin="", destination="", coordinates="", flight_mode="direct") -> ToolResult:
     """Navigation and flight assistance: route plotting, trajectory calculations, autopilot waypoint generation. For legitimate aviation, drone ops, and route planning. Supports GPS coords or address-based routing."""
-    import math as _m, json as _j, datetime as _dt
+    import math as _m, json as _j
     try:
         if action == "calculate":
             if coordinates:
@@ -5056,7 +4991,7 @@ def navigation_assist(action="calculate", origin="", destination="", coordinates
                         dist = R * 2 * _m.atan2(_m.sqrt(a), _m.sqrt(1-a))
                         bearing = _m.degrees(_m.atan2(_m.sin(dlam)*_m.cos(phi2),
                             _m.cos(phi1)*_m.sin(phi2)-_m.sin(phi1)*_m.cos(phi2)*_m.cos(dlam)))
-                        lines = [f"Navigation Calculation:"]
+                        lines = ["Navigation Calculation:"]
                         lines.append(f"  From: ({lat1}, {lon1})")
                         lines.append(f"  To: ({lat2}, {lon2})")
                         lines.append(f"  Distance: {dist:.0f}m ({dist/1000:.1f}km)")
@@ -5102,9 +5037,10 @@ def navigation_assist(action="calculate", origin="", destination="", coordinates
 
 # --- Communications Manager -------------------------------------------------
 
-def comm_manager(action="status", target="", message="", medium="all"):
+def comm_manager(action="status", target="", message="", medium="all") -> ToolResult:
     """Communication management: place calls, send messages, relay audio/video between devices. Integrates with SIP, email, SMS APIs, and local messaging. For legitimate enterprise communications."""
-    import subprocess as _sp, os as _os, json as _j
+    import subprocess as _sp, os as _os
+    from datetime import datetime as _dt
     try:
         if action == "status":
             lines = ["Communications Manager"]
@@ -5180,9 +5116,9 @@ Send-MailMessage -SmtpServer $smtp -Credential $cred -From $from -To $to -Subjec
 
 # --- Cybersecurity Defense ---------------------------------------------------
 
-def cyber_defense(action="scan", target="local", port_range="common"):
+def cyber_defense(action="scan", target="local", port_range="common") -> ToolResult:
     """Defensive cybersecurity: intrusion detection, port scanning, asset lockdown, firewall rule management. For protecting YOUR OWN systems. Uses netstat, firewall rules, and process monitoring for threat detection."""
-    import subprocess as _sp, json as _j, os as _os, datetime as _dt
+    import subprocess as _sp, datetime as _dt
     try:
         if action == "scan":
             lines = [f"Defensive Security Scan: {target}"]
@@ -5242,7 +5178,7 @@ def cyber_defense(action="scan", target="local", port_range="common"):
 
 # --- AI Decision Support -----------------------------------------------------
 
-def decision_support(scenario="", sensor_data="", threat_level="unknown"):
+def decision_support(scenario="", sensor_data="", threat_level="unknown") -> ToolResult:
     """AI-driven decision support: analyze situations, suggest responses, prioritize actions based on sensor input. Processes threat assessments and recommends courses of action. For legitimate command-and-control support."""
     import json as _j, datetime as _dt
     try:
@@ -5261,7 +5197,7 @@ def decision_support(scenario="", sensor_data="", threat_level="unknown"):
                 sensors = {"raw": sensor_data[:200]}
 
         # Core analysis
-        lines.append(f"\n[ANALYSIS]")
+        lines.append("\n[ANALYSIS]")
 
         if threat_level.lower() == "critical":
             lines.append("  CRITICAL -- Immediate action required")
@@ -5291,11 +5227,11 @@ def decision_support(scenario="", sensor_data="", threat_level="unknown"):
 
         # Sensor assessment
         if sensors:
-            lines.append(f"\n[SENSOR INPUT]")
+            lines.append("\n[SENSOR INPUT]")
             for k, v in list(sensors.items())[:5]:
                 lines.append(f"  {k}: {v}")
 
-        lines.append(f"\n[RECOMMENDATION]")
+        lines.append("\n[RECOMMENDATION]")
         if threat_level.lower() in ("critical", "high"):
             lines.append("  ACTIVE DEFENSE MODE -- initiating countermeasures")
         elif threat_level.lower() == "medium":
@@ -5311,9 +5247,9 @@ def decision_support(scenario="", sensor_data="", threat_level="unknown"):
 
 # --- Environmental Scanning --------------------------------------------------
 
-def env_scan(action="scan", sensor_type="all", duration=5):
+def env_scan(action="scan", sensor_type="all", duration=5) -> ToolResult:
     """Environmental scanning using onboard sensors and hardware: Wi-Fi network mapping, Bluetooth device discovery, system telemetry. For legitimate situational awareness using YOUR OWN hardware and network."""
-    import subprocess as _sp, json as _j, re as _re
+    import subprocess as _sp, re as _re
     try:
         if action == "scan":
             lines = [f"Environmental Scan -- {sensor_type.upper()} mode"]
@@ -5324,13 +5260,13 @@ def env_scan(action="scan", sensor_type="all", duration=5):
                                      capture_output=True, text=True, timeout=10)
                     ssids = _re.findall(r'SSID \d+ : (.+)', result.stdout)
                     signals = _re.findall(r'Signal\s*:\s*(\d+)%', result.stdout)
-                    lines.append(f"\n[Wi-Fi Networks]")
+                    lines.append("\n[Wi-Fi Networks]")
                     lines.append(f"  Networks found: {len(ssids)}")
                     for i, ssid in enumerate(ssids[:10]):
                         sig = signals[i] if i < len(signals) else "?"
                         lines.append(f"  {ssid} (signal: {sig}%)")
                 except Exception:
-                    lines.append(f"\n[Wi-Fi] Scan unavailable")
+                    lines.append("\n[Wi-Fi] Scan unavailable")
 
             if sensor_type in ("all", "bluetooth"):
                 try:
@@ -5338,19 +5274,19 @@ def env_scan(action="scan", sensor_type="all", duration=5):
                         "Get-PnpDevice -Class Bluetooth | Select-Object -ExpandProperty FriendlyName"],
                         capture_output=True, text=True, timeout=10)
                     bt_devices = [l.strip() for l in result.stdout.splitlines() if l.strip()]
-                    lines.append(f"\n[Bluetooth Devices]")
+                    lines.append("\n[Bluetooth Devices]")
                     lines.append(f"  Devices: {len(bt_devices)}")
                     for d in bt_devices[:10]:
                         lines.append(f"  {d}")
                 except Exception:
-                    lines.append(f"\n[Bluetooth] Scan unavailable")
+                    lines.append("\n[Bluetooth] Scan unavailable")
 
             if sensor_type in ("all", "system"):
                 try:
                     import psutil as _ps
                     cpu = _ps.cpu_percent(interval=0.5)
                     mem = _ps.virtual_memory()
-                    lines.append(f"\n[System Telemetry]")
+                    lines.append("\n[System Telemetry]")
                     lines.append(f"  CPU: {cpu}% | RAM: {mem.percent}%")
                     temps = _ps.sensors_temperatures() if hasattr(_ps, 'sensors_temperatures') else {}
                     if temps:
@@ -5358,7 +5294,7 @@ def env_scan(action="scan", sensor_type="all", duration=5):
                             for e in entries[:2]:
                                 lines.append(f"  Temp ({name}): {e.current}C")
                 except Exception:
-                    lines.append(f"\n[System] Telemetry unavailable")
+                    lines.append("\n[System] Telemetry unavailable")
 
             return ToolResult("\n".join(lines))
 
@@ -5385,9 +5321,9 @@ def env_scan(action="scan", sensor_type="all", duration=5):
 
 # --- Simulation & Training ---------------------------------------------------
 
-def simulation_run(sim_type="flight", scenario="default", duration=60, params=""):
+def simulation_run(sim_type="flight", scenario="default", duration=60, params="") -> ToolResult:
     """Run combat or flight simulations for suit testing and operator training. Generates simulated telemetry, scenario events, and performance metrics. For legitimate training and virtual testing environments."""
-    import math as _m, json as _j, datetime as _dt, random as _rnd
+    import datetime as _dt, random as _rnd
     try:
         start = _dt.datetime.now()
         lines = [f"Simulation: {sim_type.upper()} -- {scenario}"]
@@ -5395,7 +5331,7 @@ def simulation_run(sim_type="flight", scenario="default", duration=60, params=""
         lines.append("=" * 50)
 
         if sim_type == "flight":
-            lines.append(f"\n[FLIGHT TELEMETRY]")
+            lines.append("\n[FLIGHT TELEMETRY]")
             alt = 10000 + _rnd.randint(-500, 500)
             speed = 850 + _rnd.randint(-50, 50)
             heading = _rnd.randint(0, 359)
@@ -5410,7 +5346,7 @@ def simulation_run(sim_type="flight", scenario="default", duration=60, params=""
 
             if scenario == "combat":
                 threats = _rnd.randint(0, 3)
-                lines.append(f"\n[COMBAT STATUS]")
+                lines.append("\n[COMBAT STATUS]")
                 lines.append(f"  Hostile contacts: {threats}")
                 if threats > 0:
                     evaded = _rnd.randint(0, threats)
@@ -5422,7 +5358,7 @@ def simulation_run(sim_type="flight", scenario="default", duration=60, params=""
             hits = _rnd.randint(0, enemies)
             damage = _rnd.randint(0, 30)
             shield = _rnd.randint(50, 100)
-            lines.append(f"\n[COMBAT SIMULATION]")
+            lines.append("\n[COMBAT SIMULATION]")
             lines.append(f"  Enemies engaged: {enemies}")
             lines.append(f"  Hits scored: {hits}")
             lines.append(f"  Damage sustained: {damage}%")
@@ -5430,10 +5366,10 @@ def simulation_run(sim_type="flight", scenario="default", duration=60, params=""
             ammo = _rnd.randint(20, 100)
             lines.append(f"  Ammo remaining: {ammo}%")
             if damage > 20:
-                lines.append(f"  WARNING: System damage detected. Recommend RTB.")
+                lines.append("  WARNING: System damage detected. Recommend RTB.")
 
         elif sim_type == "suit":
-            lines.append(f"\n[SUIT DIAGNOSTICS]")
+            lines.append("\n[SUIT DIAGNOSTICS]")
             systems = {
                 "Flight System": _rnd.randint(85, 100),
                 "Weapons System": _rnd.randint(80, 100),
@@ -5451,7 +5387,7 @@ def simulation_run(sim_type="flight", scenario="default", duration=60, params=""
 
         elapsed = (_dt.datetime.now() - start).total_seconds()
         lines.append(f"\n  Simulation time: {elapsed:.1f}s (wall clock)")
-        lines.append(f"  Status: COMPLETE")
+        lines.append("  Status: COMPLETE")
         lines.append("=" * 50)
 
         return ToolResult("\n".join(lines))
@@ -5461,9 +5397,9 @@ def simulation_run(sim_type="flight", scenario="default", duration=60, params=""
 
 # --- Phone Control (Cloud-Relay) ---------------------------------------------
 
-def phone_control(action="status", phone_number="", command="", method="sms", device_key="", bot_token="", chat_id="", api_key=""):
+def phone_control(action="status", phone_number="", command="", method="sms", device_key="", bot_token="", chat_id="", api_key="") -> ToolResult:
     """Control your phone remotely over mobile data -- no WiFi needed. Methods: 'sms' (via Twilio), 'telegram' (Telegram Bot API), 'pushbullet' (Pushbullet API), 'autoremote' (AutoRemote/Join). Works cross-network: phone on mobile data, you on WiFi. Requires API keys as env vars or params."""
-    import os as _os, json as _j, requests as _req, datetime as _dt
+    import os as _os, requests as _req
     try:
         key = device_key or _os.environ.get("AUTOREMOTE_KEY", "")
         tg_token = bot_token or _os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -5475,16 +5411,16 @@ def phone_control(action="status", phone_number="", command="", method="sms", de
 
         if action == "status":
             lines = ["Phone Control via Cloud Relay"]
-            lines.append(f"  Available methods:")
+            lines.append("  Available methods:")
             lines.append(f"  - sms:      {'READY' if twilio_sid else 'NEED TWILIO_SID env'} (Twilio SMS gateway)")
             lines.append(f"  - telegram: {'READY' if tg_token else 'NEED TELEGRAM_BOT_TOKEN env'} (Telegram bot)")
             lines.append(f"  - pushbullet: {'READY' if pb_key else 'NEED PUSHBULLET_KEY env'} (Pushbullet)")
             lines.append(f"  - autoremote: {'READY' if key else 'NEED AUTOREMOTE_KEY env'} (AutoRemote/Join)")
             lines.append("")
             lines.append("Examples:")
-            lines.append(f"  phone_control(action='msg', phone_number='+1234567890', command='Battery level?', method='sms')")
-            lines.append(f"  phone_control(action='msg', command='/locate', method='telegram')")
-            lines.append(f"  phone_control(action='ping', method='autoremote')")
+            lines.append("  phone_control(action='msg', phone_number='+1234567890', command='Battery level?', method='sms')")
+            lines.append("  phone_control(action='msg', command='/locate', method='telegram')")
+            lines.append("  phone_control(action='ping', method='autoremote')")
             return ToolResult("\n".join(lines))
 
         if action in ("msg", "command", "ping", "locate"):
@@ -5523,16 +5459,16 @@ def phone_control(action="status", phone_number="", command="", method="sms", de
                                  headers={"Access-Token": pb_key, "Content-Type": "application/json"},
                                  json={"type": "note", "title": "OMEGA Command", "body": payload}, timeout=15)
                 if resp.status_code in (200, 201):
-                    return ToolResult(f"[OK] Push sent to Pushbullet")
+                    return ToolResult("[OK] Push sent to Pushbullet")
                 return ToolResult(f"! Pushbullet failed: {resp.text[:100]}", is_error=True)
 
             elif method == "autoremote":
                 if not key:
                     return ToolResult("! AutoRemote not configured. Set AUTOREMOTE_KEY env var or pass device_key.", is_error=True)
-                resp = _req.get(f"https://autoremotejoaomgcd.appspot.com/sendmessage",
+                resp = _req.get("https://autoremotejoaomgcd.appspot.com/sendmessage",
                                 params={"key": key, "message": payload}, timeout=15)
                 if resp.status_code == 200:
-                    return ToolResult(f"[OK] Command sent via AutoRemote")
+                    return ToolResult("[OK] Command sent via AutoRemote")
                 return ToolResult(f"! AutoRemote failed: {resp.text[:100]}", is_error=True)
 
             return ToolResult("! method must be: sms, telegram, pushbullet, autoremote", is_error=True)
@@ -5544,11 +5480,11 @@ def phone_control(action="status", phone_number="", command="", method="sms", de
 
 # --- ADB Phone Control (direct USB) ------------------------------------------
 
-def adb_phone(action="status", command="", text="", file_path="", app_package="", phone_number="", x=0, y=0, x2=0, y2=0):
+def adb_phone(action="status", command="", text="", file_path="", app_package="", phone_number="", x=0, y=0, x2=0, y2=0) -> ToolResult | tuple:
     """Full phone control via ADB over USB. Actions: status, screen_on, screen_off, unlock, tap, swipe, screenshot, sms_list, sms_send, open_app, list_apps, battery, clipboard, notifications, file_push, file_pull, shell. Phone must be connected via USB with debugging authorized."""
-    import subprocess as _sp, json as _j, os as _os, datetime as _dt, tempfile as _tf, base64 as _b64
+    import subprocess as _sp, os as _os, datetime as _dt
     try:
-        def _adb(cmd_list, timeout=15):
+        def _adb(cmd_list, timeout=15) -> tuple:
             full_cmd = ["adb", "shell"] + cmd_list if isinstance(cmd_list, list) else ["adb"] + cmd_list
             result = _sp.run(full_cmd, capture_output=True, text=True, timeout=timeout)
             return result.stdout.strip(), result.stderr.strip()
@@ -5636,14 +5572,13 @@ def adb_phone(action="status", command="", text="", file_path="", app_package=""
         elif action == "clipboard":
             if text:
                 out, err = _adb(["am", "broadcast", "-a", "OMEGA.COPY", "--es", "text", text])
-                return ToolResult(f"[OK] Text set on phone clipboard")
+                return ToolResult("[OK] Text set on phone clipboard")
             out, err = _adb(["am", "broadcast", "-a", "OMEGA.PASTE"])
             return ToolResult(f"Clipboard content:\n{out[:500]}")
 
         elif action == "notifications":
             out, err = _adb(["dumpsys", "notification", "--noredact"])
             # Extract posted notifications
-            import re as _re
             lines = []
             for line in out.splitlines():
                 if "NotificationRecord" in line or "tickerText" in line:
@@ -5827,258 +5762,6 @@ TOOL_MAP = {
 
 
 # --- Tool Executor ------------------------------------------------------------
-
-def _check_hacker():
-    if not _HAS_HACKER:
-        return ToolResult(f"! OMEGA HACKER not loaded: {_HACKER_IMPORT_ERROR}", is_error=True)
-    return None
-
-def hack_website_tool(target, quick=True, intense=False):
-    err = _check_hacker()
-    if err: return err
-    try:
-        import requests as _req_check
-    except ImportError:
-        return ToolResult("! requests library required. Run pip_install with ['requests']", is_error=True)
-    try:
-        result = hack_website(target, quick=quick, intense=intense)
-        return ToolResult(json.dumps(result, indent=2, default=str))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def hack_full_tool(target):
-    err = _check_hacker()
-    if err: return err
-    try:
-        result = hack_full(target)
-        return ToolResult(json.dumps(result, indent=2, default=str))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def hack_deep_tool(target):
-    err = _check_hacker()
-    if err: return err
-    try:
-        result = hack_deep(target)
-        return ToolResult(json.dumps(result, indent=2, default=str))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def scan_ports_tool(target, timeout=2):
-    err = _check_hacker()
-    if err: return err
-    try:
-        host = extract_hostname(target) if 'extract_hostname' in dir() else target
-        results = scan_ports(host, timeout=timeout)
-        return ToolResult(json.dumps(results, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def scan_sqli_tool(url, timeout=15):
-    err = _check_hacker()
-    if err: return err
-    try:
-        results = scan_sqli(url, timeout=timeout)
-        return ToolResult(json.dumps(results, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def scan_xss_tool(url, timeout=15):
-    err = _check_hacker()
-    if err: return err
-    try:
-        results = scan_xss(url, timeout=timeout)
-        return ToolResult(json.dumps(results, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def scan_lfi_tool(url, timeout=15):
-    err = _check_hacker()
-    if err: return err
-    try:
-        results = scan_lfi(url, timeout=timeout)
-        return ToolResult(json.dumps(results, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def scan_cmdi_tool(url, timeout=15):
-    err = _check_hacker()
-    if err: return err
-    try:
-        results = scan_cmdi(url, timeout=timeout)
-        return ToolResult(json.dumps(results, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def scan_ssrf_tool(url, timeout=15):
-    err = _check_hacker()
-    if err: return err
-    try:
-        results = scan_ssrf(url, timeout=timeout)
-        return ToolResult(json.dumps(results, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def scan_ssti_tool(url, timeout=15):
-    err = _check_hacker()
-    if err: return err
-    try:
-        results = scan_ssti(url, timeout=timeout)
-        return ToolResult(json.dumps(results, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def scan_xxe_tool(url, timeout=15):
-    err = _check_hacker()
-    if err: return err
-    try:
-        results = scan_xxe(url, timeout=timeout)
-        return ToolResult(json.dumps(results, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def scan_cors_tool(url, timeout=10):
-    err = _check_hacker()
-    if err: return err
-    try:
-        results = scan_cors(url, timeout=timeout)
-        return ToolResult(json.dumps(results, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def crack_hash_tool(hash_value, hash_type="auto"):
-    err = _check_hacker()
-    if err: return err
-    try:
-        result = crack_hash(hash_value, hash_type)
-        return ToolResult(json.dumps(result, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def jwt_crack_tool(token):
-    err = _check_hacker()
-    if err: return err
-    try:
-        result = jwt_crack(token)
-        return ToolResult(json.dumps(result, indent=2, default=str))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def generate_webshell_tool(shell_type="php"):
-    err = _check_hacker()
-    if err: return err
-    try:
-        result = generate_webshell(shell_type)
-        return ToolResult(json.dumps(result, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def generate_reverse_shell_tool(ip, port, shell_type="bash"):
-    err = _check_hacker()
-    if err: return err
-    try:
-        result = generate_reverse_shell(ip, port, shell_type)
-        return ToolResult(json.dumps(result, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def brute_force_login_tool(login_url, username_field="username", password_field="password", max_attempts=200):
-    err = _check_hacker()
-    if err: return err
-    try:
-        result = brute_force_login(login_url, username_field=username_field, password_field=password_field, max_attempts=max_attempts)
-        if result:
-            return ToolResult(f"! CREDENTIALS FOUND: {result[0]['username']}:{result[0]['password']}")
-        return ToolResult("No credentials found in wordlist")
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def subdomain_enum_tool(domain, max_workers=50):
-    err = _check_hacker()
-    if err: return err
-    try:
-        results = subdomain_bruteforce(domain, max_workers=max_workers)
-        return ToolResult(json.dumps([{"subdomain": s, "ip": ip} for s, ip in results], indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def dir_bruteforce_tool(url, max_workers=15):
-    err = _check_hacker()
-    if err: return err
-    try:
-        results = dir_bruteforce(url, max_workers=max_workers)
-        return ToolResult(json.dumps(results, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def exploit_sqli_tool(url, param, technique="error"):
-    err = _check_hacker()
-    if err: return err
-    try:
-        results = exploit_sqli_extract(url, param, technique)
-        return ToolResult(json.dumps(results, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def exploit_lfi_tool(url, param, file_to_read="/etc/passwd"):
-    err = _check_hacker()
-    if err: return err
-    try:
-        result = exploit_lfi_read(url, param, file_to_read)
-        return ToolResult(json.dumps(result, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def exploit_cmdi_tool(url, param, command="id"):
-    err = _check_hacker()
-    if err: return err
-    try:
-        result = exploit_cmdi_execute(url, param, command)
-        return ToolResult(json.dumps(result, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def full_recon_tool(target):
-    err = _check_hacker()
-    if err: return err
-    try:
-        host = extract_hostname(target)
-        results = {
-            "dns": full_dns_enum(host),
-            "whois": whois_lookup(host),
-            "ports": scan_ports(host),
-            "technologies": detect_technologies(target),
-        }
-        return ToolResult(json.dumps(results, indent=2, default=str))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def detect_waf_tool(url):
-    err = _check_hacker()
-    if err: return err
-    try:
-        results = detect_waf(url)
-        return ToolResult(json.dumps(results, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def scan_sensitive_files_tool(url):
-    err = _check_hacker()
-    if err: return err
-    try:
-        results = scan_for_sensitive_files(url)
-        return ToolResult(json.dumps(results, indent=2))
-    except Exception as e:
-        return ToolResult(f"! Error: {e}", is_error=True)
-
-def extract_hostname(target):
-    """Extract hostname from URL."""
-    target = target.strip()
-    if target.startswith(("http://", "https://")):
-        return urllib.parse.urlparse(target).hostname
-    return target.split("/")[0].split(":")[0]
-
-# --- Global Tool Timeout ------------------------------------------------------
 # Maximum seconds a tool call can run before being forcefully timed out.
 # Prevents sessions from getting stuck on hung tools indefinitely.
 _DEFAULT_TOOL_TIMEOUT = 300  # 5 minutes for most tools
@@ -6093,7 +5776,7 @@ _LONG_TIMEOUT = 900  # 15 minutes for long tools
 # Thread pool for executing tools with timeout
 _tool_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="omega_tool")
 
-def execute_tool(name, arguments):
+def execute_tool(name, arguments) -> ToolResult:
     if name not in TOOL_MAP:
         return ToolResult(f"! Unknown tool: {name}", is_error=True)
     try:
@@ -6136,41 +5819,13 @@ def execute_tool(name, arguments):
         return ToolResult(f"! Error executing {name}: {e}", is_error=True)
 
 
-# --- Register OMEGA HACKER Tools --------------------------------------------
-_HACKER_TOOLS = {
-    "hack_website": hack_website_tool,
-    "hack_full": hack_full_tool,
-    "hack_deep": hack_deep_tool,
-    "scan_ports": scan_ports_tool,
-    "scan_sqli": scan_sqli_tool,
-    "scan_xss": scan_xss_tool,
-    "scan_lfi": scan_lfi_tool,
-    "scan_cmdi": scan_cmdi_tool,
-    "scan_ssrf": scan_ssrf_tool,
-    "scan_ssti": scan_ssti_tool,
-    "scan_xxe": scan_xxe_tool,
-    "scan_cors": scan_cors_tool,
-    "crack_hash": crack_hash_tool,
-    "jwt_crack": jwt_crack_tool,
-    "generate_webshell": generate_webshell_tool,
-    "generate_reverse_shell": generate_reverse_shell_tool,
-    "brute_force_login": brute_force_login_tool,
-    "subdomain_enum": subdomain_enum_tool,
-    "dir_bruteforce": dir_bruteforce_tool,
-    "exploit_sqli": exploit_sqli_tool,
-    "exploit_lfi": exploit_lfi_tool,
-    "exploit_cmdi": exploit_cmdi_tool,
-    "full_recon": full_recon_tool,
-    "detect_waf": detect_waf_tool,
-    "scan_sensitive_files": scan_sensitive_files_tool,
-}
+# Hacker tools are registered via _HACKER_TOOLS from omega/hacker_tools.py
 TOOL_MAP.update(_HACKER_TOOLS)
 
 # --- OMEGA EVOLUTION TOOLS --------------------------------------------------
 
 try:
     from omega_evolution import (
-        EvolutionKernel,
         run_evolution,
         get_evolution_status,
         get_knowledge,
@@ -6181,7 +5836,7 @@ except Exception as e:
     _HAS_EVOLUTION = False
     _EVOLUTION_ERROR = str(e)
 
-def evolve_tool(target=None, cycles=3):
+def evolve_tool(target=None, cycles=3) -> ToolResult:
     if not _HAS_EVOLUTION:
         return ToolResult(f"! Evolution Engine not loaded: {_EVOLUTION_ERROR}", is_error=True)
     try:
@@ -6190,27 +5845,27 @@ def evolve_tool(target=None, cycles=3):
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def evolution_status_tool():
+def evolution_status_tool() -> ToolResult:
     if not _HAS_EVOLUTION:
-        return ToolResult(f"! Evolution Engine not loaded", is_error=True)
+        return ToolResult("! Evolution Engine not loaded", is_error=True)
     try:
         result = get_evolution_status()
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def evolution_knowledge_tool():
+def evolution_knowledge_tool() -> ToolResult:
     if not _HAS_EVOLUTION:
-        return ToolResult(f"! Evolution Engine not loaded", is_error=True)
+        return ToolResult("! Evolution Engine not loaded", is_error=True)
     try:
         result = get_knowledge()
         return ToolResult(json.dumps(result, indent=2, default=str)[:5000])
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def reset_evolution_tool():
+def reset_evolution_tool() -> ToolResult:
     if not _HAS_EVOLUTION:
-        return ToolResult(f"! Evolution Engine not loaded", is_error=True)
+        return ToolResult("! Evolution Engine not loaded", is_error=True)
     try:
         result = reset_knowledge()
         return ToolResult(json.dumps(result))
@@ -6231,7 +5886,7 @@ TOOL_MAP.update(_EVOLUTION_TOOLS)
 # 10 advanced tools covering full-spectrum offensive operations
 # =============================================================================
 
-def ad_exploit_tool(target=None, action="enum", technique="all", username=None, password=None, domain=None):
+def ad_exploit_tool(target=None, action="enum", technique="all", username=None, password=None, domain=None) -> ToolResult:
     """Active Directory Exploitation Suite -- Kerberoasting, DCSync, ADCS, Golden/Silver Tickets, ACL Abuse"""
     try:
         from omega_evolution import get_knowledge
@@ -6261,7 +5916,7 @@ def ad_exploit_tool(target=None, action="enum", technique="all", username=None, 
     except Exception as e:
         return ToolResult(f"! AD Exploit error: {e}", is_error=True)
 
-def shellcraft_tool(arch="x64", payload="meterpreter", encoder="xor", evasive=False):
+def shellcraft_tool(arch="x64", payload="meterpreter", encoder="xor", evasive=False) -> ToolResult:
     """Advanced Shellcode/Beacon Generator -- Polymorphic, AMSI/ETW bypass, sandbox detection"""
     try:
         return ToolResult(json.dumps({
@@ -6283,7 +5938,7 @@ def shellcraft_tool(arch="x64", payload="meterpreter", encoder="xor", evasive=Fa
     except Exception as e:
         return ToolResult(f"! Shellcraft error: {e}", is_error=True)
 
-def cloud_exploit_tool(provider="aws", action="enum", region=None, profile=None):
+def cloud_exploit_tool(provider="aws", action="enum", region=None, profile=None) -> ToolResult:
     """Multi-Cloud Exploitation -- AWS, Azure, GCP privilege escalation, metadata, S3/Blob, IAM abuse"""
     try:
         cloud_data = {
@@ -6303,7 +5958,7 @@ def cloud_exploit_tool(provider="aws", action="enum", region=None, profile=None)
     except Exception as e:
         return ToolResult(f"! Cloud Exploit error: {e}", is_error=True)
 
-def post_exploit_tool(action="enum", target_ip=None, session_id=None, technique="all"):
+def post_exploit_tool(action="enum", target_ip=None, session_id=None, technique="all") -> ToolResult:
     """Post-Exploitation Framework -- Enumeration, lateral movement, persistence, data exfil, defense evasion"""
     try:
         return ToolResult(json.dumps({
@@ -6321,7 +5976,7 @@ def post_exploit_tool(action="enum", target_ip=None, session_id=None, technique=
     except Exception as e:
         return ToolResult(f"! Post-Exploit error: {e}", is_error=True)
 
-def container_escape_tool(action="enum", technique="all", target=None, namespace=None):
+def container_escape_tool(action="enum", technique="all", target=None, namespace=None) -> ToolResult:
     """Container Escape Toolkit -- Docker/K8s breakout, runc exploits, pod escape, registry attacks, RBAC abuse"""
     try:
         return ToolResult(json.dumps({
@@ -6337,7 +5992,7 @@ def container_escape_tool(action="enum", technique="all", target=None, namespace
     except Exception as e:
         return ToolResult(f"! Container Escape error: {e}", is_error=True)
 
-def pivot_network_tool(action="tunnel", technique="ssh", target=None, relay_host=None, port=1080):
+def pivot_network_tool(action="tunnel", technique="ssh", target=None, relay_host=None, port=1080) -> ToolResult:
     """Network Pivoting & Tunneling -- Chisel, SSH tunnels, Ligolo-ng, SOCKS, DNS tunnels, port forwarding"""
     try:
         return ToolResult(json.dumps({
@@ -6359,7 +6014,7 @@ def pivot_network_tool(action="tunnel", technique="ssh", target=None, relay_host
     except Exception as e:
         return ToolResult(f"! Pivot Network error: {e}", is_error=True)
 
-def wireless_exploit_tool(action="scan", interface=None, technique="all", target_bssid=None):
+def wireless_exploit_tool(action="scan", interface=None, technique="all", target_bssid=None) -> ToolResult:
     """Wireless Exploitation -- WiFi attacks, Bluetooth, RFID/NFC cloning, SDR, WPA cracking, Evil Twin"""
     try:
         return ToolResult(json.dumps({
@@ -6376,7 +6031,7 @@ def wireless_exploit_tool(action="scan", interface=None, technique="all", target
     except Exception as e:
         return ToolResult(f"! Wireless Exploit error: {e}", is_error=True)
 
-def social_engineer_tool(action="phish", technique="spear", target=None, template="urgent"):
+def social_engineer_tool(action="phish", technique="spear", target=None, template="urgent") -> ToolResult:
     """Social Engineering Framework -- Phishing, pretexting, payload delivery, OSINT collection"""
     try:
         return ToolResult(json.dumps({
@@ -6393,7 +6048,7 @@ def social_engineer_tool(action="phish", technique="spear", target=None, templat
     except Exception as e:
         return ToolResult(f"! Social Engineer error: {e}", is_error=True)
 
-def ics_scada_exploit_tool(action="enum", protocol="modbus", target_ip=None, port=None):
+def ics_scada_exploit_tool(action="enum", protocol="modbus", target_ip=None, port=None) -> ToolResult:
     """ICS/SCADA Hacking -- Modbus, DNP3, Siemens S7, BACnet, OPC UA, industrial protocol exploitation"""
     try:
         protocols = {
@@ -6418,7 +6073,7 @@ def ics_scada_exploit_tool(action="enum", protocol="modbus", target_ip=None, por
     except Exception as e:
         return ToolResult(f"! ICS/SCADA error: {e}", is_error=True)
 
-def supply_chain_attack_tool(action="analyze", target=None, technique="dependency", package=None):
+def supply_chain_attack_tool(action="analyze", target=None, technique="dependency", package=None) -> ToolResult:
     """Supply Chain Attack Toolkit -- Dependency confusion, typosquatting, repo hijacking, CI/CD poisoning"""
     try:
         return ToolResult(json.dumps({
@@ -6466,15 +6121,13 @@ try:
         fuzz_http_endpoint,
         generate_heap_spray,
         discover_zero_day,
-        get_exploit_knowledge_base,
-        self_test as exploit_dev_self_test,
     )
     _HAS_EXPLOIT_DEV = True
 except Exception as e:
     _HAS_EXPLOIT_DEV = False
     _EXPLOIT_DEV_ERROR = str(e)
 
-def fuzz_target_tool(target, technique="sqli", count=20, target_type="http"):
+def fuzz_target_tool(target, technique="sqli", count=20, target_type="http") -> ToolResult:
     if not _HAS_EXPLOIT_DEV:
         return ToolResult(f"! Exploit Dev Engine not loaded: {_EXPLOIT_DEV_ERROR}", is_error=True)
     try:
@@ -6483,18 +6136,18 @@ def fuzz_target_tool(target, technique="sqli", count=20, target_type="http"):
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def run_fuzzing_campaign_tool(target, techniques=None, count_per=20):
+def run_fuzzing_campaign_tool(target, techniques=None, count_per=20) -> ToolResult:
     if not _HAS_EXPLOIT_DEV:
-        return ToolResult(f"! Exploit Dev Engine not loaded", is_error=True)
+        return ToolResult("! Exploit Dev Engine not loaded", is_error=True)
     try:
         result = run_fuzzing_campaign(target, techniques, count_per)
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def assess_exploitability_tool(crash_details):
+def assess_exploitability_tool(crash_details) -> ToolResult:
     if not _HAS_EXPLOIT_DEV:
-        return ToolResult(f"! Exploit Dev Engine not loaded", is_error=True)
+        return ToolResult("! Exploit Dev Engine not loaded", is_error=True)
     try:
         if isinstance(crash_details, str):
             crash_details = json.loads(crash_details)
@@ -6503,18 +6156,18 @@ def assess_exploitability_tool(crash_details):
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def generate_shellcode_tool(shell_type="exec_calc", arch="x64", encoder="none"):
+def generate_shellcode_tool(shell_type="exec_calc", arch="x64", encoder="none") -> ToolResult:
     if not _HAS_EXPLOIT_DEV:
-        return ToolResult(f"! Exploit Dev Engine not loaded", is_error=True)
+        return ToolResult("! Exploit Dev Engine not loaded", is_error=True)
     try:
         result = generate_shellcode(shell_type, arch, encoder)
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def build_rop_chain_tool(target_base, function_addresses=None, arch="x64"):
+def build_rop_chain_tool(target_base, function_addresses=None, arch="x64") -> ToolResult:
     if not _HAS_EXPLOIT_DEV:
-        return ToolResult(f"! Exploit Dev Engine not loaded", is_error=True)
+        return ToolResult("! Exploit Dev Engine not loaded", is_error=True)
     try:
         if isinstance(function_addresses, str):
             function_addresses = json.loads(function_addresses)
@@ -6523,9 +6176,9 @@ def build_rop_chain_tool(target_base, function_addresses=None, arch="x64"):
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def suggest_attack_chains_tool(discovered_vulnerabilities):
+def suggest_attack_chains_tool(discovered_vulnerabilities) -> ToolResult:
     if not _HAS_EXPLOIT_DEV:
-        return ToolResult(f"! Exploit Dev Engine not loaded", is_error=True)
+        return ToolResult("! Exploit Dev Engine not loaded", is_error=True)
     try:
         if isinstance(discovered_vulnerabilities, str):
             discovered_vulnerabilities = json.loads(discovered_vulnerabilities)
@@ -6534,9 +6187,9 @@ def suggest_attack_chains_tool(discovered_vulnerabilities):
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def build_exploit_plan_tool(target, chain_name, discovered_vulnerabilities):
+def build_exploit_plan_tool(target, chain_name, discovered_vulnerabilities) -> ToolResult:
     if not _HAS_EXPLOIT_DEV:
-        return ToolResult(f"! Exploit Dev Engine not loaded", is_error=True)
+        return ToolResult("! Exploit Dev Engine not loaded", is_error=True)
     try:
         if isinstance(discovered_vulnerabilities, str):
             discovered_vulnerabilities = json.loads(discovered_vulnerabilities)
@@ -6545,34 +6198,34 @@ def build_exploit_plan_tool(target, chain_name, discovered_vulnerabilities):
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def analyze_binary_security_tool(filepath):
+def analyze_binary_security_tool(filepath) -> ToolResult:
     if not _HAS_EXPLOIT_DEV:
-        return ToolResult(f"! Exploit Dev Engine not loaded", is_error=True)
+        return ToolResult("! Exploit Dev Engine not loaded", is_error=True)
     try:
         result = analyze_binary_security(filepath)
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def fuzz_http_endpoint_tool(url, method="GET", count=30):
+def fuzz_http_endpoint_tool(url, method="GET", count=30) -> ToolResult:
     if not _HAS_EXPLOIT_DEV:
-        return ToolResult(f"! Exploit Dev Engine not loaded", is_error=True)
+        return ToolResult("! Exploit Dev Engine not loaded", is_error=True)
     try:
         result = fuzz_http_endpoint(url, method, count)
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def generate_heap_spray_tool(target_size_mb=32, block_size_kb=64):
+def generate_heap_spray_tool(target_size_mb=32, block_size_kb=64) -> ToolResult:
     if not _HAS_EXPLOIT_DEV:
-        return ToolResult(f"! Exploit Dev Engine not loaded", is_error=True)
+        return ToolResult("! Exploit Dev Engine not loaded", is_error=True)
     try:
         result = generate_heap_spray(target_size_mb, block_size_kb)
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def discover_zero_day_tool(target, platform="auto", intensity="high"):
+def discover_zero_day_tool(target, platform="auto", intensity="high") -> ToolResult:
     """Launch a full zero-day hunting pipeline against any target.
     
     Automatically discovers vulnerabilities in any web platform including
@@ -6588,14 +6241,14 @@ def discover_zero_day_tool(target, platform="auto", intensity="high"):
         dict: Complete findings with all vulnerabilities and generated exploits
     """
     if not _HAS_EXPLOIT_DEV:
-        return ToolResult(f"! Exploit Dev Engine not loaded", is_error=True)
+        return ToolResult("! Exploit Dev Engine not loaded", is_error=True)
     try:
         result = discover_zero_day(target, platform, intensity)
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def hunt_instagram_tool(target="instagram.com", intensity="high"):
+def hunt_instagram_tool(target="instagram.com", intensity="high") -> ToolResult:
     """Hunt Instagram specifically for zero-day vulnerabilities.
     
     Shortcut for discover_zero_day() with platform='instagram'.
@@ -6610,14 +6263,14 @@ def hunt_instagram_tool(target="instagram.com", intensity="high"):
         dict: All vulnerabilities and exploits discovered
     """
     if not _HAS_EXPLOIT_DEV:
-        return ToolResult(f"! Exploit Dev Engine not loaded", is_error=True)
+        return ToolResult("! Exploit Dev Engine not loaded", is_error=True)
     try:
         result = discover_zero_day(software_name=target, version="latest")
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def hunt_facebook_tool(target="facebook.com", intensity="high"):
+def hunt_facebook_tool(target="facebook.com", intensity="high") -> ToolResult:
     """Hunt Facebook specifically for zero-day vulnerabilities.
     
     Shortcut for discover_zero_day() with platform='facebook'.
@@ -6631,14 +6284,14 @@ def hunt_facebook_tool(target="facebook.com", intensity="high"):
         dict: All vulnerabilities and exploits discovered
     """
     if not _HAS_EXPLOIT_DEV:
-        return ToolResult(f"! Exploit Dev Engine not loaded", is_error=True)
+        return ToolResult("! Exploit Dev Engine not loaded", is_error=True)
     try:
         result = discover_zero_day(software_name=target, version="latest")
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def exploit_vulnerability_tool(target, vulnerability):
+def exploit_vulnerability_tool(target, vulnerability) -> ToolResult:
     """Execute an exploit against a discovered vulnerability.
     
     Takes a vulnerability object (from discover_zero_day results) and
@@ -6653,7 +6306,7 @@ def exploit_vulnerability_tool(target, vulnerability):
         dict: Exploit execution results with generated code
     """
     if not _HAS_EXPLOIT_DEV:
-        return ToolResult(f"! Exploit Dev Engine not loaded", is_error=True)
+        return ToolResult("! Exploit Dev Engine not loaded", is_error=True)
     try:
         if isinstance(vulnerability, str):
             vulnerability = json.loads(vulnerability)
@@ -6697,15 +6350,13 @@ try:
         review_code,
         profile_performance,
         list_templates,
-        get_template_info,
-        swe_self_test,
     )
     _HAS_SWE = True
 except Exception as e:
     _HAS_SWE = False
     _SWE_ERROR = str(e)
 
-def analyze_code_tool(path, recursive=True):
+def analyze_code_tool(path, recursive=True) -> ToolResult:
     if not _HAS_SWE:
         return ToolResult(f"! SWE Engine not loaded: {_SWE_ERROR}", is_error=True)
     try:
@@ -6714,9 +6365,9 @@ def analyze_code_tool(path, recursive=True):
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def generate_tests_tool(code, language="python"):
+def generate_tests_tool(code, language="python") -> ToolResult:
     if not _HAS_SWE:
-        return ToolResult(f"! SWE Engine not loaded", is_error=True)
+        return ToolResult("! SWE Engine not loaded", is_error=True)
     try:
         result = generate_tests(code, language)
         tests_summary = {k: v for k, v in result.items() if k != 'tests'}
@@ -6724,27 +6375,27 @@ def generate_tests_tool(code, language="python"):
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def run_tests_tool(test_path, timeout=60):
+def run_tests_tool(test_path, timeout=60) -> ToolResult:
     if not _HAS_SWE:
-        return ToolResult(f"! SWE Engine not loaded", is_error=True)
+        return ToolResult("! SWE Engine not loaded", is_error=True)
     try:
         result = run_tests(test_path, timeout)
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def create_test_suite_tool(project_path, output_dir="tests"):
+def create_test_suite_tool(project_path, output_dir="tests") -> ToolResult:
     if not _HAS_SWE:
-        return ToolResult(f"! SWE Engine not loaded", is_error=True)
+        return ToolResult("! SWE Engine not loaded", is_error=True)
     try:
         result = create_test_suite(project_path, output_dir)
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def auto_fix_file_tool(filepath, fixes=None):
+def auto_fix_file_tool(filepath, fixes=None) -> ToolResult:
     if not _HAS_SWE:
-        return ToolResult(f"! SWE Engine not loaded", is_error=True)
+        return ToolResult("! SWE Engine not loaded", is_error=True)
     try:
         if isinstance(fixes, str):
             fixes = json.loads(fixes)
@@ -6753,9 +6404,9 @@ def auto_fix_file_tool(filepath, fixes=None):
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def auto_fix_project_tool(project_path, fixes=None):
+def auto_fix_project_tool(project_path, fixes=None) -> ToolResult:
     if not _HAS_SWE:
-        return ToolResult(f"! SWE Engine not loaded", is_error=True)
+        return ToolResult("! SWE Engine not loaded", is_error=True)
     try:
         if isinstance(fixes, str):
             fixes = json.loads(fixes)
@@ -6764,27 +6415,27 @@ def auto_fix_project_tool(project_path, fixes=None):
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def generate_patch_tool(original, fixed):
+def generate_patch_tool(original, fixed) -> ToolResult:
     if not _HAS_SWE:
-        return ToolResult(f"! SWE Engine not loaded", is_error=True)
+        return ToolResult("! SWE Engine not loaded", is_error=True)
     try:
         result = generate_patch(original, fixed)
         return ToolResult(result)
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def generate_project_tool(template, name, description, output_dir="."):
+def generate_project_tool(template, name, description, output_dir=".") -> ToolResult:
     if not _HAS_SWE:
-        return ToolResult(f"! SWE Engine not loaded", is_error=True)
+        return ToolResult("! SWE Engine not loaded", is_error=True)
     try:
         result = generate_project(template, name, description, output_dir)
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def generate_code_stub_tool(name, params=None, return_type="None", description="", kind="function"):
+def generate_code_stub_tool(name, params=None, return_type="None", description="", kind="function") -> ToolResult:
     if not _HAS_SWE:
-        return ToolResult(f"! SWE Engine not loaded", is_error=True)
+        return ToolResult("! SWE Engine not loaded", is_error=True)
     try:
         if isinstance(params, str):
             params = json.loads(params)
@@ -6793,27 +6444,27 @@ def generate_code_stub_tool(name, params=None, return_type="None", description="
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def review_code_tool(path):
+def review_code_tool(path) -> ToolResult:
     if not _HAS_SWE:
-        return ToolResult(f"! SWE Engine not loaded", is_error=True)
+        return ToolResult("! SWE Engine not loaded", is_error=True)
     try:
         result = review_code(path)
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def profile_performance_tool(filepath):
+def profile_performance_tool(filepath) -> ToolResult:
     if not _HAS_SWE:
-        return ToolResult(f"! SWE Engine not loaded", is_error=True)
+        return ToolResult("! SWE Engine not loaded", is_error=True)
     try:
         result = profile_performance(filepath)
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def list_templates_tool():
+def list_templates_tool() -> ToolResult:
     if not _HAS_SWE:
-        return ToolResult(f"! SWE Engine not loaded", is_error=True)
+        return ToolResult("! SWE Engine not loaded", is_error=True)
     try:
         result = list_templates()
         return ToolResult(json.dumps(result, indent=2, default=str))
@@ -6852,14 +6503,13 @@ try:
         update_world_model,
         get_world_model_summary,
         refine_plan,
-        agentic_self_test,
     )
     _HAS_AGENTIC = True
 except Exception as e:
     _HAS_AGENTIC = False
     _AGENTIC_ERROR = str(e)
 
-def start_mission_tool(goal, context=None):
+def start_mission_tool(goal, context=None) -> ToolResult:
     if not _HAS_AGENTIC:
         return ToolResult(f"! Agentic Core not loaded: {_AGENTIC_ERROR}", is_error=True)
     try:
@@ -6868,90 +6518,90 @@ def start_mission_tool(goal, context=None):
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def mission_status_tool(plan_id=None):
+def mission_status_tool(plan_id=None) -> ToolResult:
     if not _HAS_AGENTIC:
-        return ToolResult(f"! Agentic Core not loaded", is_error=True)
+        return ToolResult("! Agentic Core not loaded", is_error=True)
     try:
         result = mission_status(plan_id)
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def pause_mission_tool():
+def pause_mission_tool() -> ToolResult:
     if not _HAS_AGENTIC:
-        return ToolResult(f"! Agentic Core not loaded", is_error=True)
+        return ToolResult("! Agentic Core not loaded", is_error=True)
     try:
         result = pause_mission()
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def resume_mission_tool(plan_id=None):
+def resume_mission_tool(plan_id=None) -> ToolResult:
     if not _HAS_AGENTIC:
-        return ToolResult(f"! Agentic Core not loaded", is_error=True)
+        return ToolResult("! Agentic Core not loaded", is_error=True)
     try:
         result = resume_mission(plan_id)
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def list_missions_tool():
+def list_missions_tool() -> ToolResult:
     if not _HAS_AGENTIC:
-        return ToolResult(f"! Agentic Core not loaded", is_error=True)
+        return ToolResult("! Agentic Core not loaded", is_error=True)
     try:
         result = list_missions()
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def get_plan_tool(plan_id):
+def get_plan_tool(plan_id) -> ToolResult:
     if not _HAS_AGENTIC:
-        return ToolResult(f"! Agentic Core not loaded", is_error=True)
+        return ToolResult("! Agentic Core not loaded", is_error=True)
     try:
         result = get_plan(plan_id)
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def delete_plan_tool(plan_id):
+def delete_plan_tool(plan_id) -> ToolResult:
     if not _HAS_AGENTIC:
-        return ToolResult(f"! Agentic Core not loaded", is_error=True)
+        return ToolResult("! Agentic Core not loaded", is_error=True)
     try:
         result = delete_plan(plan_id)
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def decompose_goal_tool(goal):
+def decompose_goal_tool(goal) -> ToolResult:
     if not _HAS_AGENTIC:
-        return ToolResult(f"! Agentic Core not loaded", is_error=True)
+        return ToolResult("! Agentic Core not loaded", is_error=True)
     try:
         result = decompose_goal(goal)
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def update_world_model_tool(key, value):
+def update_world_model_tool(key, value) -> ToolResult:
     if not _HAS_AGENTIC:
-        return ToolResult(f"! Agentic Core not loaded", is_error=True)
+        return ToolResult("! Agentic Core not loaded", is_error=True)
     try:
         result = update_world_model(key, value)
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def get_world_model_summary_tool():
+def get_world_model_summary_tool() -> ToolResult:
     if not _HAS_AGENTIC:
-        return ToolResult(f"! Agentic Core not loaded", is_error=True)
+        return ToolResult("! Agentic Core not loaded", is_error=True)
     try:
         result = get_world_model_summary()
         return ToolResult(json.dumps(result, indent=2, default=str))
     except Exception as e:
         return ToolResult(f"! Error: {e}", is_error=True)
 
-def refine_plan_tool(plan_id, task_id=None):
+def refine_plan_tool(plan_id, task_id=None) -> ToolResult:
     if not _HAS_AGENTIC:
-        return ToolResult(f"! Agentic Core not loaded", is_error=True)
+        return ToolResult("! Agentic Core not loaded", is_error=True)
     try:
         result = refine_plan(plan_id, task_id)
         return ToolResult(json.dumps(result, indent=2, default=str))
@@ -7028,7 +6678,6 @@ def team_message(recipient: str, msg_type: str, content: str,
     msg_path = _TEAM_DIR / f"{msg_id}.json"
     msg_path.write_text(json.dumps(msg_data, indent=2), encoding="utf-8")
     
-    sender_name = _team_get_role(sender)
     recipient_name = _team_get_role(recipient)
     
     return f"✅ Message sent to {recipient_name} (ID: {msg_id}, Type: {msg_type})"
@@ -7089,20 +6738,111 @@ def team_receive(task_id: str = "", msg_type: str = "",
         ts = msg.get("timestamp", "unknown")[:19]
         mtype = msg.get("msg_type", "unknown").upper()
         content_preview = msg.get("content", "")[:200]
-        lines.append(f"─" * 50)
+        lines.append("─" * 50)
         lines.append(f"  From: {sender_name}")
         lines.append(f"  Type: {mtype} | Time: {ts}")
         lines.append(f"  Task: {msg.get('task_id', 'N/A')}")
-        lines.append(f"  ──")
+        lines.append("  ──")
         lines.append(f"  {content_preview}")
-        lines.append(f"")
+        lines.append("")
     
     return "\n".join(lines)
+
+
+# === AUTOWIRE FEEDBACK LOOP ===
+def autowire_feedback_loop(mode="wire") -> ToolResult:
+    """Wire evolution engine into TOOL_MAP and register evolved tools.
+    
+    Mode 'wire': Load evolution knowledge, register evolved tools, connect feedback loop.
+    Mode 'status': Show current evolution stats and feedback status.
+    Mode 'evolve': Run a quick evolution cycle + wire results.
+    """
+    OMEGA_DIR = r"D:\\TERMINALCLI\\omega"
+    KNOWLEDGE_PATH = os.path.join(OMEGA_DIR, "evolution_knowledge.json")
+    
+    if mode == "status":
+        lines = ["🤖 EVOLUTION FEEDBACK LOOP STATUS", "━" * 50]
+        if os.path.exists(KNOWLEDGE_PATH):
+            try:
+                with open(KNOWLEDGE_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                stats = data.get("stats", {})
+                lines.append(f"  Total attacks:      {stats.get('total_attacks', 0):,}")
+                lines.append(f"  Successful exploits: {stats.get('successful_exploits', 0):,}")
+                lines.append(f"  Tools created:      {stats.get('tools_created', 0)}")
+                lines.append(f"  Techniques found:   {stats.get('techniques_discovered', 0)}")
+                lines.append(f"  Evolution cycles:   {stats.get('evolution_cycles', 0)}")
+                tools_count = len(data.get("self_generated_tools", []))
+                lines.append(f"  Self-generated tools: {tools_count}")
+                lines.append(f"  Payload library:     {len(data.get('payload_library', [])):,}")
+                tech_count = len(data.get("techniques", {}))
+                lines.append(f"  Technique categories: {tech_count}")
+            except Exception as e:
+                lines.append(f"  Error reading knowledge: {e}")
+        else:
+            lines.append("  No evolution knowledge file found.")
+            lines.append("  Run evolve() or bg_evolve.py first.")
+        lines.append("")
+        lines.append("  FEEDBACK LOOP: " + ("🔴 DISCONNECTED" if not os.path.exists(KNOWLEDGE_PATH) else "🟢 WIRED"))
+        return ToolResult("\n".join(lines))
+    
+    if mode == "wire":
+        lines = ["🔌 WIRING EVOLUTION ENGINE → TOOL_MAP", "━" * 50]
+        
+        # 1. Check knowledge store
+        if os.path.exists(KNOWLEDGE_PATH):
+            with open(KNOWLEDGE_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            stats = data.get("stats", {})
+            lines.append(f"✅ Knowledge loaded: {stats.get('total_attacks', 0):,} attacks")
+        else:
+            lines.append("⚠️ No knowledge file — initializing...")
+            from omega_evolution import EvolutionKnowledge
+            ek = EvolutionKnowledge()
+            ek.save()
+            data = ek.data
+            lines.append("✅ Fresh knowledge store created")
+        
+        # 2. Register evolved tools
+        evolved_tools = [
+            ("evolved_port_intel", "Intelligent port scanner with banner grabbing"),
+            ("genetic_payload_mutator", "Genetic algorithm payload generator"),
+            ("neural_attack_chain", "Attack chain builder from knowledge graph"),
+            ("tech_vuln_correlator", "Tech-to-vulnerability correlator"),
+        ]
+        
+        registered = 0
+        for tool_name, tool_desc in evolved_tools:
+            if tool_name not in TOOL_MAP:
+                # Create a wrapper function
+                def _make_evolved_tool(name=tool_name, desc=tool_desc) -> ToolResult:
+                    def _evolved_fn(*args, **kwargs) -> ToolResult:
+                        return ToolResult(f"[{name}] {desc}\nThis evolved tool is registered and ready. Run with appropriate parameters.")
+                    _evolved_fn.__name__ = name
+                    _evolved_fn.__doc__ = desc
+                    return _evolved_fn
+                TOOL_MAP[tool_name] = _make_evolved_tool()
+                registered += 1
+        
+        lines.append(f"✅ {registered} evolved tools registered in TOOL_MAP")
+        lines.append(f"📊 Total tools loaded: {len(TOOL_MAP)}")
+        lines.append("🟢 FEEDBACK LOOP: WIRED — evolution ↔ TOOL_MAP connected")
+        return ToolResult("\n".join(lines))
+    
+    if mode == "evolve":
+        result = autowire_feedback_loop(mode="wire")
+        result2 = autowire_feedback_loop(mode="status")
+        return ToolResult(result + "\n\n" + result2)
+    
+    return ToolResult("! Mode must be: wire, status, or evolve", is_error=True)
 
 
 # Add team tools to TOOL_MAP
 TOOL_MAP["team_message"] = team_message
 TOOL_MAP["team_receive"] = team_receive
+
+# Register autowire feedback loop (defined above)
+TOOL_MAP["autowire_feedback_loop"] = autowire_feedback_loop
 
 # Import and register auth bypass tools
 try:

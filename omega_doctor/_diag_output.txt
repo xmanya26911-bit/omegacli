@@ -1,0 +1,72 @@
+﻿============================================================
+  TEST: Full Diagnostics
+============================================================
+============================================================
+  ≡ƒö¼ OMEGA DIAGNOSTICS REPORT
+  2026-07-08 22:21:32
+============================================================
+  Γ£à File: agent.py 
+  Γ£à Syntax: agent.py 
+  Γ£à File: tools.py 
+  Γ£à Syntax: tools.py 
+  Γ£à File: llm.py 
+  Γ£à Syntax: llm.py 
+  Γ£à File: memory.py 
+  Γ£à Syntax: memory.py 
+  Γ£à File: config.py 
+  Γ£à Syntax: config.py 
+  Γ£à File: prompts.py 
+  Γ£à Syntax: prompts.py 
+  Γ£à File: cli.py 
+  Γ£à Syntax: cli.py 
+  Γ£à File: main.py 
+  Γ£à Syntax: main.py 
+  Γ£à Configuration 
+  Γ£à Model: deepseek-v4-flash-free 
+  Γ¥î LLM Client Init [CRITICAL]
+     ΓööΓöÇ LLM init failed: 'LLMClient' object has no attribute 'model'
+  Γ£à Tool Registry 
+  Γ£à Tool Coverage 
+  Γ£à Short-Term Memory 
+  Γ£à Persistent Memory 
+  Γ£à Hacker Module 
+  Γ£à Evolution Module 
+  Γ£à Disk Space 
+  Γ£à Size: agent.py 
+  Γ£à Size: tools.py 
+  Γ£à Size: llm.py 
+  Γ£à Size: memory.py 
+  Γ£à Size: config.py 
+  Γ£à Size: prompts.py 
+  Γ£à Size: cli.py 
+  Γ£à Size: main.py 
+  Γ£à Home Config: config.json 
+  Γ¥î Home Config: .secrets.json [INFO]
+     ΓööΓöÇ Missing: C:\Users\pc\.omega\.secrets.json
+  Γ£à Home Config: memory 
+  Γ¥î Git Status [INFO]
+     ΓööΓöÇ 1 uncommitted changes
+------------------------------------------------------------
+  Passed: 35/38  |  Failed: 3  |  Critical: 1
+============================================================
+
+============================================================
+  TEST: Quick Health Check
+============================================================
+============================================================
+  ≡ƒö¼ OMEGA DIAGNOSTICS REPORT
+  2026-07-08 22:21:32
+============================================================
+  Γ£à Syntax: agent.py 
+  Γ£à Syntax: tools.py 
+  Γ£à Syntax: config.py 
+  Γ£à Syntax: llm.py 
+  Γ£à Config 
+------------------------------------------------------------
+  Passed: 5/5  |  Failed: 0  |  Critical: 0
+============================================================
+
+Full: 35/38 passed, 1 critical
+Quick: 5/5 passed
+
+SOME CHECKS FAILED (non-critical)

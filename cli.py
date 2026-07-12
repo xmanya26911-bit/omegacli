@@ -1,48 +1,49 @@
 #!/usr/bin/env python3
 """OMEGA CLI — Beautiful terminal interface using Rich with multiple themes (Gemini CLI inspired)."""
 
-import sys
 import shutil
-import time
+import sys
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
+
 from rich.markup import escape as rich_escape
 
 # ─── Global session timer ──────────────────────────────────────────────────────
-_SESSION_START = time.time()
-_LAST_HEARTBEAT = [time.time()]
-_CURRENT_TOOL = [None]  # name of currently executing tool
-_TOOL_START_TIME = [0.0]  # when current tool started
+_SESSION_START: float = time.time()
+_LAST_HEARTBEAT: list[float] = [time.time()]
+_CURRENT_TOOL: list[str | None] = [None]  # name of currently executing tool
+_TOOL_START_TIME: list[float] = [0.0]  # when current tool started
 
-def get_elapsed_str():
+def get_elapsed_str() -> str:
     """Return '[HH:MM:SS]' since session start."""
     elapsed = int(time.time() - _SESSION_START)
     h, m, s = elapsed // 3600, (elapsed % 3600) // 60, elapsed % 60
     return f"[{h:02d}:{m:02d}:{s:02d}]"
 
-def get_timestamp():
+def get_timestamp() -> str:
     """Return '[HH:MM:SS]' current wall clock."""
     return datetime.now().strftime("[%H:%M:%S]")
 
-def set_current_tool(name):
+def set_current_tool(name: str | None) -> None:
     """Set the currently executing tool name for heartbeat display."""
     _CURRENT_TOOL[0] = name
     _TOOL_START_TIME[0] = time.time()
 
-def clear_current_tool():
+def clear_current_tool() -> None:
     """Clear current tool after execution."""
     _CURRENT_TOOL[0] = None
     _TOOL_START_TIME[0] = 0.0
 
-def get_current_tool_str():
+def get_current_tool_str() -> str:
     """Return a string like '[Running: tool_name (12s)]' or empty string."""
     if _CURRENT_TOOL[0]:
         elapsed = int(time.time() - _TOOL_START_TIME[0])
         return f"[{_CURRENT_TOOL[0]} {elapsed}s]"
     return ""
 
-def heartbeat():
+def heartbeat() -> None:
     """Print heartbeat with tool progress every 5s during long tool execution."""
     now = time.time()
     if now - _LAST_HEARTBEAT[0] >= 5.0:
@@ -57,7 +58,7 @@ def heartbeat():
         sys.stdout.flush()
         _LAST_HEARTBEAT[0] = now
 
-def reset_heartbeat():
+def reset_heartbeat() -> None:
     """Reset heartbeat timer after tool output."""
     _LAST_HEARTBEAT[0] = time.time()
 
@@ -77,17 +78,17 @@ else:
 _use_rich = False
 try:
     if _unicode_safe:
-        from rich.console import Console
-        from rich.table import Table
-        from rich.panel import Panel
-        from rich.syntax import Syntax
-        from rich.markdown import Markdown
-        from rich.text import Text
         from rich import box
-        from rich.style import Style
-        from rich.theme import Theme
-        from rich.columns import Columns
         from rich.align import Align
+        from rich.columns import Columns
+        from rich.console import Console
+        from rich.markdown import Markdown
+        from rich.panel import Panel
+        from rich.style import Style
+        from rich.syntax import Syntax
+        from rich.table import Table
+        from rich.text import Text
+        from rich.theme import Theme
         _use_rich = True
 except ImportError:
     pass
@@ -96,7 +97,8 @@ _use_colorama = False
 if not _use_rich:
     try:
         import colorama
-        from colorama import Fore, Style, init as colorama_init
+        from colorama import Fore, Style
+        from colorama import init as colorama_init
         colorama_init(autoreset=True)
         _use_colorama = True
     except ImportError:
@@ -302,14 +304,15 @@ DEFAULT_THEME = "default-dark"
 # Current active theme — set via set_active_theme()
 _current_theme_name = DEFAULT_THEME
 _current_theme = OMEGA_THEMES[DEFAULT_THEME]
+custom_theme: Theme | None = Theme({}) if _use_rich else None
 
 
-def get_theme_names():
+def get_theme_names() -> list[tuple[str, str, str]]:
     """Return list of available themes with their display names."""
     return [(k, v["name"], v["type"]) for k, v in OMEGA_THEMES.items()]
 
 
-def set_active_theme(theme_name):
+def set_active_theme(theme_name: str) -> bool:
     """Switch the active theme. Returns True on success."""
     global _current_theme_name, _current_theme
     if theme_name in OMEGA_THEMES:
@@ -320,17 +323,17 @@ def set_active_theme(theme_name):
     return False
 
 
-def get_active_theme():
+def get_active_theme() -> str | None:
     """Return current theme key."""
     return _current_theme_name
 
 
-def get_theme_colors():
+def get_theme_colors() -> dict:
     """Return the color dict for the active theme."""
     return _current_theme["colors"]
 
 
-def _apply_rich_theme():
+def _apply_rich_theme() -> None:
     """Recreate the global Rich console with the new theme colors."""
     global console, error_console, custom_theme
     if not _use_rich:
@@ -362,9 +365,9 @@ elif _use_colorama:
     error_console = None
 else:
     class SimpleConsole:
-        def print(self, *args, **kwargs):
+        def print(self, *args: object, **kwargs: object) -> None:
             print(*args)
-        def rule(self, *args, **kwargs):
+        def rule(self, *args: object, **kwargs: object) -> None:
             pass
     console = SimpleConsole()
     error_console = SimpleConsole()
@@ -372,7 +375,7 @@ else:
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
-def sanitize(text):
+def sanitize(text: str) -> str:
     """Sanitize text for Windows console encoding."""
     if not text:
         return text
@@ -384,7 +387,7 @@ def sanitize(text):
         return text.encode("cp1252", errors="replace").decode("cp1252")
 
 
-def safe_char(ch, fallback):
+def safe_char(ch: str, fallback: str) -> str:
     """Return ch if it can be encoded to cp1252, otherwise fallback."""
     try:
         ch.encode("cp1252")
@@ -411,7 +414,7 @@ _S = {
 }
 
 
-def format_size(size):
+def format_size(size: int) -> str:
     """Format file size in human-readable format."""
     for unit in ['B', 'KB', 'MB', 'GB']:
         if size < 1024:
@@ -420,7 +423,7 @@ def format_size(size):
     return f"{size:.1f} TB"
 
 
-def get_terminal_width():
+def get_terminal_width() -> int:
     try:
         return shutil.get_terminal_size().columns
     except Exception:
@@ -428,21 +431,21 @@ def get_terminal_width():
 
 
 # ANSI color helpers for fallback mode
-def _ansi(n, bright=False):
+def _ansi(n: int, bright: bool = False) -> str:
     """Return ANSI escape code for color number n."""
     if bright:
         return f"\033[{30 + n}m" if n < 8 else f"\033[90m"
     return f"\033[{30 + n if n < 8 else 90}m"
 
 
-def _theme_ansi(key):
+def _theme_ansi(key: str) -> str:
     """Get ANSI escape code for a theme color key."""
     ansi_map = _current_theme.get("ansi", {})
     n = ansi_map.get(key, 7)
     return _ansi(n)
 
 
-def _theme_ansi_bright(key):
+def _theme_ansi_bright(key: str) -> str:
     """Get bright ANSI escape code for a theme color key."""
     ansi_map = _current_theme.get("ansi", {})
     n = ansi_map.get(key, 7)
@@ -454,7 +457,7 @@ def _theme_ansi_bright(key):
 
 
 
-def print_banner(config=None, compact=False):
+def print_banner(config: dict | None = None, compact: bool = False) -> None:
     """Print a sleek, minimal OMEGA banner — Claude Code inspired."""
     model_name = config.model if config else "unknown"
 
@@ -486,30 +489,29 @@ def print_banner(config=None, compact=False):
 
 class Spinner:
     """Animated spinner that runs in a daemon thread."""
-
-    def __init__(self, message="Thinking"):
+    def __init__(self, message: str = "Thinking") -> None:
         self._running = False
-        self._thread = None
+        self._thread: threading.Thread | None = None
         self._message = message
         self._chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
         if not _unicode_safe:
             self._chars = ["|", "/", "-", "\\"]
 
-    def __enter__(self):
+    def __enter__(self) -> 'Spinner':
         self.start()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: object | None) -> None:
         self.stop()
 
-    def start(self):
+    def start(self) -> None:
         if _use_rich:
             return
         self._running = True
         self._thread = threading.Thread(target=self._spin, daemon=True)
         self._thread.start()
 
-    def stop(self):
+    def stop(self) -> None:
         self._running = False
         if self._thread:
             self._thread.join(timeout=0.5)
@@ -517,7 +519,7 @@ class Spinner:
             sys.stdout.write("\r" + " " * 80 + "\r")
             sys.stdout.flush()
 
-    def _spin(self):
+    def _spin(self) -> None:
         idx = 0
         tc = _theme_ansi("accent")
         while self._running:
@@ -529,7 +531,7 @@ class Spinner:
 
 # ─── User Input / Output ──────────────────────────────────────────────────────
 
-def print_user_input(text):
+def print_user_input(text: str) -> None:
     """Print user input — Claude Code style: clean header, no panel."""
     text = sanitize(text)
     c = _current_theme["colors"]
@@ -556,7 +558,7 @@ _thinking_active = False
 _thinking_has_content = False
 _thinking_at_line_start = True
 
-def print_assistant_header():
+def print_assistant_header() -> None:
     """Print the assistant header before streaming starts — shown once per response."""
     global _streaming_header_shown
     if _streaming_header_shown:
@@ -570,7 +572,7 @@ def print_assistant_header():
         print(f"\n{sc}{_S['pipe']} OMEGA{Style.RESET_ALL}")
 
 
-def print_thinking_start():
+def print_thinking_start() -> None:
     """Show the '--- Reasoning ---' header when OMEGA starts thinking."""
     global _thinking_active, _thinking_has_content
     if _thinking_active:
@@ -589,7 +591,7 @@ def print_thinking_start():
         print(f"  {dc}Reasoning:{Style.RESET_ALL}")
 
 
-def print_thinking_busy():
+def print_thinking_busy() -> None:
     """Show a subtle live indicator during streaming (overwritten when done)."""
     if _use_rich:
         c = _current_theme["colors"]
@@ -601,7 +603,7 @@ def print_thinking_busy():
         sys.stdout.flush()
 
 
-def print_assistant_thinking(text):
+def print_assistant_thinking(text: str) -> None:
     """Print streaming thinking/reasoning — shows the live reasoning as the AI thinks."""
     global _thinking_has_content, _thinking_at_line_start
     _thinking_has_content = True
@@ -620,7 +622,7 @@ def print_assistant_thinking(text):
         sys.stdout.flush()
 
 
-def print_thinking_block(content):
+def print_thinking_block(content: str) -> None:
     """Display the complete thinking block (buffered) with header and content."""
     if not content:
         return
@@ -643,7 +645,7 @@ def print_thinking_block(content):
         print(f"  {dc}{check} Analyzed{Style.RESET_ALL}")
 
 
-def print_thinking_done():
+def print_thinking_done() -> None:
     """Mark the end of the thinking phase — shows the end section."""
     global _thinking_active
     if not _thinking_active:
@@ -662,14 +664,14 @@ def print_thinking_done():
         print(f"  {dc}{sep}{Style.RESET_ALL}")
 
 
-def print_assistant_done():
+def print_assistant_done() -> None:
     """Called when assistant finishes a response."""
     if _use_rich:
         pass
     print()
 
 
-def print_assistant_message(text):
+def print_assistant_message(text: str) -> None:
     """Print a complete assistant message — clean, no Panel wrapping."""
     if not text:
         return
@@ -697,7 +699,7 @@ def print_assistant_message(text):
         print()
 
 
-def reset_streaming_header():
+def reset_streaming_header() -> None:
     """Reset the streaming header flag for the next response."""
     global _streaming_header_shown, _thinking_active, _thinking_has_content, _thinking_at_line_start
     _streaming_header_shown = False
@@ -706,7 +708,7 @@ def reset_streaming_header():
     _thinking_at_line_start = True
 
 
-def get_input(model_name="unknown", message_count=0, token_estimate=0):
+def get_input(model_name: str = "unknown", message_count: int = 0, token_estimate: int = 0) -> str:
     """Get user input — Claude Code style: clean › prompt with minimal context."""
     try:
         if _use_rich:
@@ -742,7 +744,7 @@ def get_input(model_name="unknown", message_count=0, token_estimate=0):
 
 # ─── Tool Call Display ────────────────────────────────────────────────────────
 
-def _protocol_name(name):
+def _protocol_name(name: str) -> str:
     """Convert a tool name to a JARVIS-style protocol name."""
     protocol_map = {
         "execute_command": "Executing Shell Command",
@@ -796,7 +798,7 @@ def _protocol_name(name):
     return protocol_map.get(name, name.replace("_", " ").title())
 
 
-def print_tool_call(name, args=None, duration=None):
+def print_tool_call(name: str, args: str | None = None, duration: str | None = None) -> None:
     """Print a tool call — with timestamp so user sees progress."""
     reset_heartbeat()
     ts = get_timestamp()
@@ -804,10 +806,7 @@ def print_tool_call(name, args=None, duration=None):
     if args:
         try:
             import json
-            if isinstance(args, str):
-                args_obj = json.loads(args)
-            else:
-                args_obj = args
+            args_obj = json.loads(args) if isinstance(args, str) else args
             important_args = {k: v for k, v in args_obj.items() if k not in ("content",)}
             if important_args:
                 arg_parts = []
@@ -840,7 +839,7 @@ def print_tool_call(name, args=None, duration=None):
     sys.stdout.flush()
 
 
-def print_tool_result(content, is_error=False):
+def print_tool_result(content: str, is_error: bool = False) -> None:
     """Print tool execution result — with timestamp so user sees progress."""
     reset_heartbeat()
     if not content:
@@ -873,7 +872,7 @@ def print_tool_result(content, is_error=False):
     sys.stdout.flush()
 
 
-def print_task_complete(summary):
+def print_task_complete(summary: str) -> None:
     """Print task completion — clean checkmark, no heavy rules."""
     c = _current_theme["colors"]
     if _use_rich:
@@ -887,7 +886,7 @@ def print_task_complete(summary):
 
 # ─── Info / Warning / Error ───────────────────────────────────────────────────
 
-def print_info(text):
+def print_info(text: str) -> None:
     """Print informational message — minimal."""
     c = _current_theme["colors"]
     if _use_rich:
@@ -899,17 +898,17 @@ def print_info(text):
 
 # ─── Diff Display ────────────────────────────────────────────────────────────
 
-def print_diff(diff_text, max_lines=50):
+def print_diff(diff_text: str, max_lines: int = 50) -> None:
     """Print a unified diff with colour-coded additions/removals."""
     if not diff_text or diff_text.strip() == "(no changes)":
         print_info("(no changes)")
         return
-    
+
     lines = diff_text.split("\n")
     added = 0
     removed = 0
     c = _current_theme["colors"]
-    
+
     if _use_rich:
         for line in lines[:max_lines]:
             if line.startswith("+") and not line.startswith("+++"):
@@ -920,7 +919,7 @@ def print_diff(diff_text, max_lines=50):
                 removed += 1
             elif line.startswith("@@"):
                 console.print(f"  [dim]{sanitize(line)}[/dim]")
-            elif line.startswith("diff --git") or line.startswith("index "):
+            elif line.startswith(("diff --git", "index ")):
                 continue
             elif line.strip():
                 console.print(f"  {sanitize(line)}")
@@ -946,7 +945,7 @@ def print_diff(diff_text, max_lines=50):
         print(f"  {dc}┊ +{added} -{removed}{Style.RESET_ALL}")
 
 
-def print_warning(text):
+def print_warning(text: str) -> None:
     """Print warning message — minimal."""
     c = _current_theme["colors"]
     if _use_rich:
@@ -956,7 +955,7 @@ def print_warning(text):
         print(f"  {wc}{_S['warn']} {text}{Style.RESET_ALL}")
 
 
-def print_error(text):
+def print_error(text: str) -> None:
     """Print error message — minimal."""
     if _use_rich:
         error_console.print(f"  [error]✖ {sanitize(text)}[/error]")
@@ -965,7 +964,7 @@ def print_error(text):
         print(f"  {ec}{_S['cross']} {text}{Style.RESET_ALL}")
 
 
-def print_success(text):
+def print_success(text: str) -> None:
     """Print success message — minimal."""
     c = _current_theme["colors"]
     if _use_rich:
@@ -977,7 +976,7 @@ def print_success(text):
 
 # ─── Tables ────────────────────────────────────────────────────────────────────
 
-def print_table(title, columns, rows):
+def print_table(title: str, columns: list[str], rows: list[list[str]]) -> None:
     """Print a table — clean, minimal borders."""
     c = _current_theme["colors"]
     if _use_rich:
@@ -1031,7 +1030,7 @@ def print_table(title, columns, rows):
 
 # ─── Code Display ─────────────────────────────────────────────────────────────
 
-def print_code(code, language="python"):
+def print_code(code: str, language: str = "python") -> None:
     """Print syntax-highlighted code — minimal, no panel wrapping."""
     if _use_rich:
         try:
@@ -1045,7 +1044,7 @@ def print_code(code, language="python"):
 
 # ─── Help / Welcome ────────────────────────────────────────────────────────────
 
-def print_welcome(model_name="unknown"):
+def print_welcome(model_name: str = "unknown") -> None:
     """Print a sleek, Claude Code-inspired welcome message."""
     from datetime import datetime
     hour = datetime.now().hour
@@ -1098,18 +1097,18 @@ def print_welcome(model_name="unknown"):
         print()
 
 
-def print_theme_list(current_theme):
+def print_theme_list(current_theme: str) -> None:
     """Print available themes — clean list."""
-    rows = []
+    rows: list[list[str]] = []
     for key, info in OMEGA_THEMES.items():
         marker = f" {_S['bullet']}" if key == current_theme else ""
-        rows.append([f"{key}{marker}", info["name"], info["type"]])
+        rows.append([f"{key}{marker}", str(info["name"]), str(info["type"])])
     print_table("Themes", ["Key", "Display Name", "Type"], rows)
     print_info(f"Current: {current_theme}")
     print_info("Usage: /theme <key>  (e.g., /theme dracula)")
 
 
-def print_help():
+def print_help() -> None:
     """Print comprehensive help — Claude Code style: clean, organized."""
     c = _current_theme["colors"]
     if _use_rich:

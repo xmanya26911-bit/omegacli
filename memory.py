@@ -3,15 +3,16 @@
    ENHANCED with TOTAL RECALL: auto-save everything, cross-session persistence,
    full conversation history indexing, and intelligent recall."""
 
+import contextlib
+import gzip
+import json
 import os
 import re
-import json
 import time
-import gzip
-from pathlib import Path
-from datetime import datetime, timedelta
-from threading import Lock, Thread
 from collections import defaultdict, deque
+from datetime import datetime, timedelta
+from pathlib import Path
+from threading import Lock, Thread
 
 MEMORY_DIR = Path.home() / ".omega" / "memory"
 TOTAL_RECALL_DIR = MEMORY_DIR / "total_recall"
@@ -23,18 +24,18 @@ TOTAL_RECALL_DIR = MEMORY_DIR / "total_recall"
 class PersistentMemory:
     """Persistent, thread-safe memory using JSON files."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         MEMORY_DIR.mkdir(parents=True, exist_ok=True)
         TOTAL_RECALL_DIR.mkdir(parents=True, exist_ok=True)
         self.lock = Lock()
         self._facts_path = MEMORY_DIR / "facts.json"
         self._notes_path = MEMORY_DIR / "notes.json"
         self._log_path = MEMORY_DIR / "history.log"
-        self._facts = {}
-        self._notes = []
+        self._facts: dict = {}
+        self._notes: list = []
         self._load()
 
-    def _load(self):
+    def _load(self) -> None:
         """Load facts and notes from disk."""
         if self._facts_path.exists():
             try:
@@ -47,7 +48,7 @@ class PersistentMemory:
             except (json.JSONDecodeError, OSError):
                 self._notes = []
 
-    def _save_facts(self):
+    def _save_facts(self) -> None:
         """Save facts atomically."""
         tmp = self._facts_path.with_suffix(".tmp")
         tmp.write_text(
@@ -55,7 +56,7 @@ class PersistentMemory:
         )
         tmp.replace(self._facts_path)
 
-    def _save_notes(self):
+    def _save_notes(self) -> None:
         """Save notes atomically."""
         tmp = self._notes_path.with_suffix(".tmp")
         tmp.write_text(
@@ -63,7 +64,7 @@ class PersistentMemory:
         )
         tmp.replace(self._notes_path)
 
-    def _log(self, action, detail=""):
+    def _log(self, action: str, detail: str = "") -> None:
         """Append to activity log."""
         try:
             ts = datetime.now().isoformat()
@@ -72,7 +73,7 @@ class PersistentMemory:
         except OSError:
             pass
 
-    def remember(self, key, value, tags=None):
+    def remember(self, key: str, value: object, tags: list[str] | None = None) -> str | None:
         """Save a fact to persistent memory."""
         with self.lock:
             now = datetime.now().isoformat()
@@ -94,7 +95,7 @@ class PersistentMemory:
             self._log("remember", f"{key}={value[:100]}")
             return f"✓ Remembered: {key}"
 
-    def recall(self, key):
+    def recall(self, key: str) -> object | None:
         """Retrieve a specific memory by key."""
         with self.lock:
             if key in self._facts:
@@ -111,7 +112,7 @@ class PersistentMemory:
                 return f"Not found: '{key}'. Did you mean: {', '.join(similar[:5])}?"
             return f"No memory found for key: {key}"
 
-    def forget(self, key):
+    def forget(self, key: str) -> None:
         """Delete a memory by key."""
         with self.lock:
             if key in self._facts:
@@ -121,7 +122,7 @@ class PersistentMemory:
                 return f"✓ Forgotten: {key}"
             return f"No memory found for key: {key}"
 
-    def list_memories(self, tag=None):
+    def list_memories(self, tag: str | None = None) -> list[dict]:
         """List all memories, optionally filtered by tag."""
         with self.lock:
             if not self._facts:
@@ -139,7 +140,7 @@ class PersistentMemory:
             header = f"Stored memories ({len(items)}):"
             return header + "\n" + "\n".join(items)
 
-    def search(self, query):
+    def search(self, query: str) -> list[dict]:
         """Search memories and notes by relevance scoring."""
         with self.lock:
             results = []
@@ -208,7 +209,7 @@ class PersistentMemory:
                 output += f"    {r['value'][:120]}"
             return output
 
-    def save_note(self, title, content, tags=None):
+    def save_note(self, title: str, content: str, tags: list[str] | None = None) -> None:
         """Save a longer document/note."""
         with self.lock:
             now = datetime.now().isoformat()
@@ -234,7 +235,7 @@ class PersistentMemory:
             self._log("save_note", title)
             return f"✓ Saved note: {title}"
 
-    def read_note(self, title):
+    def read_note(self, title: str) -> str | None:
         """Read a saved note by title."""
         with self.lock:
             for note in self._notes:
@@ -250,7 +251,7 @@ class PersistentMemory:
                 return f"Not found: '{title}'. Did you mean: {', '.join(similar[:5])}?"
             return f"No note found: {title}"
 
-    def delete_note(self, title):
+    def delete_note(self, title: str) -> None:
         """Delete a note by title."""
         with self.lock:
             for i, note in enumerate(self._notes):
@@ -261,7 +262,7 @@ class PersistentMemory:
                     return f"✓ Deleted note: {title}"
             return f"No note found: {title}"
 
-    def list_notes(self, tag=None):
+    def list_notes(self, tag: str | None = None) -> list[dict]:
         """List all notes, optionally filtered by tag."""
         with self.lock:
             if not self._notes:
@@ -279,7 +280,7 @@ class PersistentMemory:
                 return f"No notes with tag: {tag}"
             return f"Notes ({len(items)}):\n" + "\n".join(items)
 
-    def export_all(self):
+    def export_all(self) -> dict:
         """Export all facts and notes as a JSON-serializable dict."""
         with self.lock:
             return {
@@ -289,7 +290,7 @@ class PersistentMemory:
                 "notes": list(self._notes),
             }
 
-    def import_all(self, data):
+    def import_all(self, data: dict) -> None:
         """Import facts and notes from an export dict. Returns summary string."""
         with self.lock:
             facts_count = 0
@@ -310,7 +311,7 @@ class PersistentMemory:
             self._save_notes()
             return f"Imported {facts_count} facts and {notes_count} notes (skipped duplicates)"
 
-    def get_relevant_context(self, query, max_items=5):
+    def get_relevant_context(self, query: str, max_items: int = 5) -> list[dict]:
         """Get relevant memory context for a user query (for injection into system prompt)."""
         if not query:
             return ""
@@ -361,10 +362,10 @@ class PersistentMemory:
 
 class ConversationLogger:
     """Append-only logger that records EVERY interaction permanently.
-    
-    Each conversation turn is logged as a JSON line (JSONL format) in 
+
+    Each conversation turn is logged as a JSON line (JSONL format) in
     daily compressed log files under ~/.omega/memory/total_recall/.
-    
+
     Structure:
       total_recall/
         conversations/          # Daily JSONL conversation logs
@@ -374,8 +375,8 @@ class ConversationLogger:
         sessions/               # Full session snapshots (auto-saved)
           session_20260101_120000.json.gz
     """
-    
-    def __init__(self):
+
+    def __init__(self) -> None:
         TOTAL_RECALL_DIR.mkdir(parents=True, exist_ok=True)
         self._conv_dir = TOTAL_RECALL_DIR / "conversations"
         self._conv_dir.mkdir(parents=True, exist_ok=True)
@@ -388,8 +389,8 @@ class ConversationLogger:
         self._index = self._load_index()
         self._turn_count = 0
         self._session_id = None
-        
-    def _load_index(self):
+
+    def _load_index(self) -> None:
         """Load the search index from disk."""
         if self._index_path.exists():
             try:
@@ -405,36 +406,34 @@ class ConversationLogger:
             "tools_used": {},      # tool_name -> count
             "last_updated": datetime.now().isoformat(),
         }
-    
-    def _save_index(self):
+
+    def _save_index(self) -> None:
         """Save the search index atomically."""
         self._index["last_updated"] = datetime.now().isoformat()
         tmp = self._index_path.with_suffix(".tmp")
         try:
             tmp.write_text(
-                json.dumps(self._index, indent=2, ensure_ascii=False), 
+                json.dumps(self._index, indent=2, ensure_ascii=False),
                 encoding="utf-8"
             )
             tmp.replace(self._index_path)
         except OSError:
             pass
-    
-    def _get_log_path(self, date=None):
+
+    def _get_log_path(self, date: str | None = None) -> Path:
         """Get the path for today's conversation log file."""
         if date is None:
             date = datetime.now().strftime("%Y-%m-%d")
         return self._conv_dir / f"conv_{date}.jsonl.gz"
-    
-    def _ensure_log_file(self):
+
+    def _ensure_log_file(self) -> None:
         """Ensure the current log file is open and ready."""
         import time as _time
         today = datetime.now().strftime("%Y-%m-%d")
         if today != self._today or self._current_log is None:
             if self._current_log is not None:
-                try:
+                with contextlib.suppress(Exception):
                     self._current_log.close()
-                except Exception:
-                    pass
             self._today = today
             log_path = self._get_log_path(today)
             # Retry with backoff if file is locked by another process
@@ -450,10 +449,10 @@ class ConversationLogger:
                         tmp = str(log_path) + f".{os.getpid()}.tmp"
                         self._current_log = gzip.open(tmp, "wt", encoding="utf-8", newline="")
         return self._current_log
-    
-    def log_interaction(self, turn_data):
+
+    def log_interaction(self, turn_data: dict) -> None:
         """Record a complete interaction turn (user msg + assistant response + tool calls).
-        
+
         Args:
             turn_data: dict with keys:
                 - timestamp: ISO datetime
@@ -473,13 +472,13 @@ class ConversationLogger:
                 "tool_calls": turn_data.get("tool_calls") or [],
                 "summary": turn_data.get("summary", ""),
             }
-            
+
             # Write to today's compressed log
             logfile = self._ensure_log_file()
             line = json.dumps(entry, ensure_ascii=False)
             logfile.write(line + "\n")
             logfile.flush()
-            
+
             # Update index stats
             self._index["total_turns"] += 1
             if entry["summary"]:
@@ -488,16 +487,16 @@ class ConversationLogger:
             for tc in (turn_data.get("tool_calls") or []):
                 name = tc.get("name", "unknown")
                 self._index["tools_used"][name] = self._index["tools_used"].get(name, 0) + 1
-            
+
             self._turn_count += 1
             self._save_index()
-    
-    def log_session_start(self):
+
+    def log_session_start(self) -> None:
         """Start a new session and record it in the index."""
         now = datetime.now()
         self._session_id = now.strftime("S%Y%m%d_%H%M%S_%f")
         self._turn_count = 0
-        
+
         # Save session metadata to index
         if "sessions" not in self._index:
             self._index["sessions"] = {}
@@ -509,8 +508,8 @@ class ConversationLogger:
         self._index["total_sessions"] = len(self._index["sessions"])
         self._save_index()
         return self._session_id
-    
-    def log_session_end(self, summary=""):
+
+    def log_session_end(self, summary: str = "") -> None:
         """Record session end time and save a full snapshot."""
         if not self._session_id:
             return
@@ -521,7 +520,7 @@ class ConversationLogger:
                 self._index["sessions"][self._session_id]["turns"] = self._turn_count
                 self._index["sessions"][self._session_id]["summary"] = summary[:200]
                 self._save_index()
-        
+
         # Close current log file
         if self._current_log is not None:
             try:
@@ -529,19 +528,19 @@ class ConversationLogger:
             except Exception:
                 pass  # Log file may already be closed
             self._current_log = None
-    
-    def search_history(self, query, max_results=20):
+
+    def search_history(self, query: str, max_results: int = 20) -> list[dict]:
         """Search the entire conversation history for matching text.
-        
+
         This scans all daily log files (using grep-like search) and returns
         matching turns with context.
         """
         q = query.lower()
         results = []
-        
+
         # Scan all conversation logs
         conv_files = sorted(self._conv_dir.glob("conv_*.jsonl.gz"), reverse=True)
-        
+
         for fpath in conv_files[:60]:  # Search last 60 days for performance
             try:
                 with gzip.open(str(fpath), "rt", encoding="utf-8") as f:
@@ -553,14 +552,14 @@ class ConversationLogger:
                             entry = json.loads(line)
                         except json.JSONDecodeError:
                             continue
-                        
+
                         # Search in all text fields
                         search_text = (
                             (entry.get("user") or "") + " " +
                             (entry.get("assistant") or "") + " " +
                             (entry.get("summary") or "")
                         ).lower()
-                        
+
                         if q in search_text:
                             # Also search tool call results
                             tool_text = ""
@@ -568,7 +567,7 @@ class ConversationLogger:
                                 tool_text += (tc.get("name") or "") + " " + (tc.get("result") or "") + " "
                             if q in tool_text.lower():
                                 pass  # Already matched
-                            
+
                             results.append({
                                 "timestamp": entry.get("timestamp", ""),
                                 "session_id": entry.get("session_id", ""),
@@ -577,22 +576,22 @@ class ConversationLogger:
                                 "summary": (entry.get("summary") or "")[:150],
                                 "tool_count": len(entry.get("tool_calls") or []),
                             })
-                            
+
                             if len(results) >= max_results:
                                 break
                 if len(results) >= max_results:
                     break
             except (OSError, EOFError):
                 continue
-        
+
         return results
-    
-    def search_history_by_date(self, date_str):
+
+    def search_history_by_date(self, date_str: str) -> list[dict]:
         """Get all conversations from a specific date (YYYY-MM-DD)."""
         fpath = self._get_log_path(date_str)
         if not fpath.exists():
             return []
-        
+
         turns = []
         try:
             with gzip.open(str(fpath), "rt", encoding="utf-8") as f:
@@ -606,8 +605,8 @@ class ConversationLogger:
         except (OSError, EOFError):
             pass
         return turns
-    
-    def get_stats(self):
+
+    def get_stats(self) -> dict:
         """Get conversation statistics."""
         stats = {
             "total_turns": self._index.get("total_turns", 0),
@@ -621,10 +620,10 @@ class ConversationLogger:
             "last_updated": self._index.get("last_updated", ""),
         }
         return stats
-    
-    def save_session_snapshot(self, messages):
+
+    def save_session_snapshot(self, messages: list[dict]) -> str:
         """Save a full session snapshot (all messages) as a compressed JSON file.
-        
+
         This captures the ENTIRE conversation context, not just individual turns,
         so you can pick up exactly where you left off.
         """
@@ -654,8 +653,8 @@ class ConversationLogger:
                 self._index["sessions"][self._session_id]["messages_count"] = len(messages)
                 self._save_index()
             return str(fpath)
-    
-    def get_latest_session_snapshot(self):
+
+    def get_latest_session_snapshot(self) -> list[dict] | None:
         """Find and return the most recent session snapshot data."""
         sessions = sorted(self._session_dir.glob("session_*.json.gz"), reverse=True)
         if not sessions:
@@ -666,8 +665,8 @@ class ConversationLogger:
                 return json.load(f)
         except (OSError, json.JSONDecodeError):
             return None
-    
-    def get_all_conversation_dates(self):
+
+    def get_all_conversation_dates(self) -> list[str]:
         """Get list of all dates that have conversation logs."""
         dates = []
         for f in sorted(self._conv_dir.glob("conv_*.jsonl.gz"), reverse=True):
@@ -676,12 +675,12 @@ class ConversationLogger:
             if match:
                 dates.append(match.group(1))
         return dates
-    
-    def export_all_conversations(self, output_path=None):
+
+    def export_all_conversations(self, output_path: Path | None = None) -> str:
         """Export ALL conversations to a single JSON file."""
         if output_path is None:
             output_path = MEMORY_DIR / f"conversation_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        
+
         all_turns = []
         for fpath in sorted(self._conv_dir.glob("conv_*.jsonl.gz")):
             try:
@@ -695,21 +694,21 @@ class ConversationLogger:
                                 continue
             except OSError:
                 continue
-        
+
         export = {
             "exported_at": datetime.now().isoformat(),
             "total_turns": len(all_turns),
             "total_sessions": self._index.get("total_sessions", 0),
             "conversations": all_turns,
         }
-        
+
         output_path.write_text(
-            json.dumps(export, indent=2, ensure_ascii=False), 
+            json.dumps(export, indent=2, ensure_ascii=False),
             encoding="utf-8"
         )
         return str(output_path)
-    
-    def get_session_context(self, session_id, max_turns=50):
+
+    def get_session_context(self, session_id: str, max_turns: int = 50) -> list[dict]:
         """Get all turns from a specific session (for context restoration)."""
         turns = []
         for fpath in sorted(self._conv_dir.glob("conv_*.jsonl.gz"), reverse=True):
@@ -740,29 +739,29 @@ class ConversationLogger:
 
 class AutoSaveManager:
     """Manages automatic saving of everything.
-    
+
     - Auto-saves conversation turns immediately after each exchange
     - Maintains a rolling window of recent sessions for fast recovery
     - Creates session snapshots periodically
     - Extracts and saves key facts from conversations
     """
-    
-    def __init__(self, persistent_memory=None):
+
+    def __init__(self, persistent_memory: PersistentMemory | None = None) -> None:
         self.logger = ConversationLogger()
         self.pm = persistent_memory or get_persistent_memory()
         self._last_save_time = time.time()
         self._turn_count = 0
-        
-    def start_session(self):
+
+    def start_session(self) -> None:
         """Begin a new session — called at agent startup."""
         session_id = self.logger.log_session_start()
         return session_id
-    
-    def end_session(self, summary=""):
+
+    def end_session(self, summary: str = "") -> None:
         """End the current session."""
         self.logger.log_session_end(summary=summary)
-    
-    def save_turn(self, user_msg, assistant_msg, tool_calls=None, summary=""):
+
+    def save_turn(self, user_msg: str, assistant_msg: str, tool_calls: list[dict] | None = None, summary: str = "") -> None:
         """Auto-save a single conversation turn immediately."""
         self._turn_count += 1
         turn_data = {
@@ -773,37 +772,37 @@ class AutoSaveManager:
             "summary": summary or "",
         }
         self.logger.log_interaction(turn_data)
-    
-    def save_snapshot(self, messages):
+
+    def save_snapshot(self, messages: list[dict]) -> None:
         """Save a full session snapshot. Returns the file path."""
         return self.logger.save_session_snapshot(messages)
-    
-    def recover_last_session(self, max_turns=50):
+
+    def recover_last_session(self, max_turns: int = 50) -> list[dict] | None:
         """Get the most recent session's conversation turns for context recovery."""
         return self.logger.get_latest_session_snapshot()
-    
-    def search_everything(self, query, max_results=20):
+
+    def search_everything(self, query: str, max_results: int = 20) -> dict:
         """Search ALL memory sources (facts, notes, conversations)."""
         results = []
-        
+
         # Search persistent memory (facts + notes)
         mem_results = self.pm.search(query)
         if mem_results:
             results.append({"source": "persistent_memory", "content": mem_results})
-        
+
         # Search conversation history
         conv_results = self.logger.search_history(query, max_results=max_results)
         if conv_results:
             results.append({"source": "conversation_history", "content": conv_results})
-        
+
         return results
-    
-    def get_memory_stats(self):
+
+    def get_memory_stats(self) -> dict:
         """Get comprehensive memory statistics."""
         conv_stats = self.logger.get_stats()
         facts_count = len(self.pm._facts) if hasattr(self.pm, '_facts') else 0
         notes_count = len(self.pm._notes) if hasattr(self.pm, '_notes') else 0
-        
+
         return {
             **conv_stats,
             "persistent_facts": facts_count,
@@ -818,27 +817,27 @@ class AutoSaveManager:
 
 class ShortTermMemory:
     """Short-term conversation memory with token-aware trimming."""
-    
-    def __init__(self, max_tokens=64000):
+
+    def __init__(self, max_tokens: int = 64000) -> None:
         self.messages = []
         self.max_tokens = max_tokens
 
-    def add_system(self, content):
+    def add_system(self, content: str) -> None:
         """Add system message at the beginning."""
         self.messages.insert(0, {"role": "system", "content": content})
 
-    def set_system(self, content):
+    def set_system(self, content: str) -> None:
         """Replace system message."""
         if self.messages and self.messages[0]["role"] == "system":
             self.messages[0] = {"role": "system", "content": content}
         else:
             self.messages.insert(0, {"role": "system", "content": content})
 
-    def add_user(self, content):
+    def add_user(self, content: str) -> None:
         """Add user message."""
         self.messages.append({"role": "user", "content": content})
 
-    def add_assistant(self, content="", tool_calls=None):
+    def add_assistant(self, content: str = "", tool_calls: list[dict] | None = None) -> None:
         """Add assistant message with optional tool calls."""
         msg = {"role": "assistant"}
         if content:
@@ -847,7 +846,7 @@ class ShortTermMemory:
             msg["tool_calls"] = tool_calls
         self.messages.append(msg)
 
-    def add_tool(self, tool_call_id, content):
+    def add_tool(self, tool_call_id: str, content: str) -> None:
         """Add tool result message."""
         self.messages.append({
             "role": "tool",
@@ -855,24 +854,24 @@ class ShortTermMemory:
             "content": content,
         })
 
-    def get_messages(self):
+    def get_messages(self) -> list[dict]:
         return self.messages
 
-    def clear(self):
+    def clear(self) -> None:
         self.messages = []
 
-    def remove_last_n(self, n):
+    def remove_last_n(self, n: int) -> None:
         if n > 0 and len(self.messages) > 0:
             self.messages = self.messages[:-n]
 
-    def estimate_tokens(self):
+    def estimate_tokens(self) -> int:
         """Rough token estimation."""
         total = 0
         for msg in self.messages:
             total += len(str(msg)) // 4
         return total
 
-    def trim(self, target_tokens=48000):
+    def trim(self, target_tokens: int = 48000) -> None:
         """Remove oldest complete turns but SUMMARIZE them first so context is preserved.
         Never orphans tool messages without their preceding assistant(tool_calls).
         """
@@ -925,7 +924,7 @@ class ShortTermMemory:
 
         return self.estimate_tokens()
 
-    def get_token_stats(self):
+    def get_token_stats(self) -> dict:
         return {
             "messages": len(self.messages),
             "estimated_tokens": self.estimate_tokens(),
@@ -940,7 +939,7 @@ _persistent = None
 _recall = None
 
 
-def get_persistent_memory():
+def get_persistent_memory() -> PersistentMemory:
     """Get or create the global PersistentMemory instance."""
     global _persistent
     if _persistent is None:
@@ -948,7 +947,7 @@ def get_persistent_memory():
     return _persistent
 
 
-def get_total_recall():
+def get_total_recall() -> ConversationLogger:
     """Get or create the global TotalRecall (auto-save manager) instance."""
     global _recall
     if _recall is None:
@@ -956,7 +955,7 @@ def get_total_recall():
     return _recall
 
 
-def reset_memory():
+def reset_memory() -> None:
     """Reset all memory singletons (for testing/cleanup)."""
     global _persistent, _recall
     if _persistent is not None:

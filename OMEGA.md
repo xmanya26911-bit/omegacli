@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-OMEGA is a god-level CLI AI agent with 220+ tools, designed to be the ultimate J.A.R.V.I.S.-class assistant. It features a Rich-powered terminal UI, persistent memory (Total Recall), autonomous evolution engine, offensive security framework, and Claude Code-style project features.
+OMEGA is a god-level CLI AI agent with 187+ tools, designed to be the ultimate J.A.R.V.I.S.-class assistant. It features a Rich-powered terminal UI, persistent memory (Total Recall), autonomous evolution engine, offensive security framework, and Claude Code-style project features.
 
 ## Architecture
 

@@ -91,7 +91,7 @@ class CodeAnalyzer:
         "long_function": r'def\s+\w+.*:\s*\n(?:.+\n){50,}',
     }
     
-    def __init__(self, project_path: str = "."):
+    def __init__(self, project_path: str = ".") -> None:
         self.project_path = Path(project_path)
     
     def analyze_project(self, path: str = None) -> dict:
@@ -221,7 +221,7 @@ class CodeAnalyzer:
 class TestEngine:
     """Automatic test generation and execution engine."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.test_count = 0
         self.pass_count = 0
         self.fail_count = 0
@@ -493,7 +493,7 @@ class CodeFixEngine:
         },
     }
     
-    def __init__(self, backup: bool = True):
+    def __init__(self, backup: bool = True) -> None:
         self.backup = backup
         self.fixes_applied = []
     
@@ -909,7 +909,7 @@ if __name__ == "__main__":
         }
     }
     
-    def __init__(self):
+    def __init__(self) -> None:
         pass
     
     def generate_project(self, template_name: str, name: str, 
@@ -998,7 +998,7 @@ class CodeReviewEngine:
         "performance": 5,
     }
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.analyzer = CodeAnalyzer()
     
     def review_project(self, path: str) -> dict:
@@ -1203,7 +1203,7 @@ class TerminalBenchAgent:
     Models the Terminal Bench paradigm -- chain shell commands, parse outputs,
     apply fixes, and verify results in an automated loop."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.history = []
         self.workdir = os.getcwd()
     
@@ -1350,7 +1350,7 @@ class SWEBenchPatchEngine:
     """Automated patch generation and verification at SWE-bench level.
     Handles the full cycle: analyze issue -> generate fix -> apply -> test -> verify."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.patch_history = []
     
     def generate_patch_workflow(self, repo_path: str, issue_description: str, 
@@ -1575,7 +1575,7 @@ class DebugLoopEngine:
     """Automated debugging with test-to-fix cycles.
     Write test -> run -> analyze failure -> generate fix -> apply -> verify."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.debug_sessions = []
     
     def debug_function(self, code: str, function_name: str, 
@@ -1840,7 +1840,7 @@ class DependencyGraphAnalyzer:
     """Full project dependency mapping and impact analysis.
     Builds import graphs, call graphs, and data flow maps."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.graphs = {}
     
     def build_import_graph(self, project_path: str) -> dict:
@@ -1919,12 +1919,12 @@ class DependencyGraphAnalyzer:
         
         return graph
     
-    def _detect_circular(self, graph: dict, import_map: dict):
+    def _detect_circular(self, graph: dict, import_map: dict) -> None:
         """Detect circular dependencies using DFS."""
         visited = set()
         recursion_stack = set()
         
-        def dfs(module, path):
+        def dfs(module, path) -> None:
             if module in recursion_stack:
                 cycle_start = path.index(module)
                 cycle = path[cycle_start:] + [module]
@@ -1983,7 +1983,7 @@ class DependencyGraphAnalyzer:
             changed_module = changed_module[:-9]
         
         impacted = set()
-        def find_impacted(module, visited):
+        def find_impacted(module, visited) -> None:
             if module in visited:
                 return
             visited.add(module)
@@ -2026,7 +2026,7 @@ class MultiFileEditor:
     Handles refactoring that spans files, ensures imports stay valid,
     and maintains code consistency."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.edit_sessions = []
     
     def plan_refactor(self, project_path: str, changes: list) -> dict:

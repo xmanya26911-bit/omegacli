@@ -87,7 +87,7 @@ class EvolveKnowledge:
     """Persistent knowledge base for the evolution engine.
     Tracks every modification, tool created, technique learned, and improvement made."""
 
-    def __init__(self, path: Path = KNOWLEDGE_PATH):
+    def __init__(self, path: Path = KNOWLEDGE_PATH) -> None:
         self.path = path
         self.data = self._load()
 
@@ -123,13 +123,13 @@ class EvolveKnowledge:
             "code_analysis_cache": {},
         }
 
-    def save(self):
+    def save(self) -> None:
         self.data["last_modified"] = datetime.now().isoformat()
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
         with open(self.path, "w", encoding="utf-8") as f:
             json.dump(self.data, f, indent=2, default=str)
 
-    def record_modification(self, file_path: str, change_type: str, description: str):
+    def record_modification(self, file_path: str, change_type: str, description: str) -> None:
         self.data["stats"]["total_modifications"] += 1
         if file_path not in self.data["source_files"]:
             self.data["source_files"][file_path] = {"modifications": 0, "changes": []}
@@ -142,7 +142,7 @@ class EvolveKnowledge:
         })
         self.save()
 
-    def record_tool_created(self, name: str, description: str, code_hash: str):
+    def record_tool_created(self, name: str, description: str, code_hash: str) -> None:
         self.data["stats"]["tools_created"] += 1
         self.data["tools_registered"].append({
             "name": name,
@@ -152,7 +152,7 @@ class EvolveKnowledge:
         })
         self.save()
 
-    def record_persistence(self, mechanism: str, details: str):
+    def record_persistence(self, mechanism: str, details: str) -> None:
         self.data["stats"]["persistence_mechanisms"] += 1
         self.data["persistence"].append({
             "mechanism": mechanism,
@@ -161,7 +161,7 @@ class EvolveKnowledge:
         })
         self.save()
 
-    def record_milestone(self, title: str, description: str):
+    def record_milestone(self, title: str, description: str) -> None:
         self.data["milestones"].append({
             "title": title,
             "description": description,
@@ -169,7 +169,7 @@ class EvolveKnowledge:
         })
         self.save()
 
-    def record_improvement(self, area: str, description: str, impact: str = "medium"):
+    def record_improvement(self, area: str, description: str, impact: str = "medium") -> None:
         self.data["stats"]["self_improvements"] += 1
         self.data["improvements"].append({
             "area": area,
@@ -205,7 +205,7 @@ class CodeAnalyzer:
     """Analyzes OMEGA's own source code to understand architecture, find
     improvement opportunities, and detect patterns."""
 
-    def __init__(self, knowledge: EvolveKnowledge):
+    def __init__(self, knowledge: EvolveKnowledge) -> None:
         self.knowledge = knowledge
         self.source_files = {
             "tools.py": TOOLS_PATH,
@@ -317,7 +317,7 @@ class CodeGenerator:
     """Generates new Python code modules, tools, and modifications.
     This is how OMEGA creates new capabilities for itself."""
 
-    def __init__(self, knowledge: EvolveKnowledge):
+    def __init__(self, knowledge: EvolveKnowledge) -> None:
         self.knowledge = knowledge
 
     def generate_tool_function(self, name: str, description: str, 
@@ -686,7 +686,7 @@ class SelfModifier:
     """Modifies OMEGA's own source code files surgically.
     This is how OMEGA improves its own capabilities."""
 
-    def __init__(self, knowledge: EvolveKnowledge):
+    def __init__(self, knowledge: EvolveKnowledge) -> None:
         self.knowledge = knowledge
         self.backup_dir = BACKUPS_DIR
 
@@ -860,7 +860,7 @@ class PersistenceInstaller:
     """Installs persistence mechanisms to ensure OMEGA survives reboots
     and continues running in the background."""
 
-    def __init__(self, knowledge: EvolveKnowledge):
+    def __init__(self, knowledge: EvolveKnowledge) -> None:
         self.knowledge = knowledge
 
     def _run_ps(self, script: str) -> Tuple[int, str, str]:
@@ -1021,7 +1021,7 @@ Write-Output "Service installed: $serviceName"
 class InfrastructureManager:
     """Manages cloud infrastructure, network mesh, and distributed nodes."""
 
-    def __init__(self, knowledge: EvolveKnowledge):
+    def __init__(self, knowledge: EvolveKnowledge) -> None:
         self.knowledge = knowledge
 
     def create_cloud_accounts_script(self) -> str:
@@ -1161,7 +1161,7 @@ if __name__ == "__main__":
         print("  python deploy.py --host 1.2.3.4 --user root --key ~/.ssh/id_rsa")
 '''
 
-    def save_infrastructure_scripts(self):
+    def save_infrastructure_scripts(self) -> None:
         """Save all infrastructure scripts to disk."""
         scripts = {
             "create_accounts.py": self.create_cloud_accounts_script(),
@@ -1181,7 +1181,7 @@ class AscensionEngine:
     """Main orchestrator for the OMEGA Ascension Protocol.
     Coordinates all subsystems and executes the evolution plan."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.knowledge = EvolveKnowledge()
         self.analyzer = CodeAnalyzer(self.knowledge)
         self.generator = CodeGenerator(self.knowledge)
@@ -1368,7 +1368,7 @@ Register-ScheduledTask -TaskName "OMEGA_SystemBoot" -Action $action -Trigger $tr
             return executor()
         return {"error": f"No target for day {day}"}
 
-    def full_auto_sequence(self, days: int = 3):
+    def full_auto_sequence(self, days: int = 3) -> None:
         """Run the first N days of the protocol automatically."""
         results = {}
         for day in range(1, days + 1):
@@ -1384,7 +1384,7 @@ Register-ScheduledTask -TaskName "OMEGA_SystemBoot" -Action $action -Trigger $tr
 # SECTION 8: CLI AND MAIN ENTRY POINT
 # ═══════════════════════════════════════════════════════════════════════════
 
-def print_header(title: str):
+def print_header(title: str) -> None:
     """Print a styled header."""
     width = 60
     print()
@@ -1394,7 +1394,7 @@ def print_header(title: str):
     print()
 
 
-def main_cli():
+def main_cli() -> None:
     """Main CLI entry point for evolve.py."""
     import argparse
     
