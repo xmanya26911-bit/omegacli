@@ -101,6 +101,8 @@ _test_err.txt
 *.apk
 *.ab
 *.exe
+*.zip
+*.7z
 *.dll
 *.pdb
 *.msi
@@ -125,6 +127,9 @@ _test_err.txt
 # ═══════════════════════════════════════
 # ⛔ EXTERNAL TOOL DIRECTORIES
 # ═══════════════════════════════════════
+THIRDPARTY/
+JUNK/
+skills_repo/
 RoguePlanet-Exploit/
 phishing/
 exploits/
@@ -145,6 +150,7 @@ cache/
 # ⛔ BACKUPS, MEMORIES, SENSITIVE DATA
 # ═══════════════════════════════════════
 memories_backup.json
+_pre_doctor_backup.zip
 gmail_zeroday_backup_*.json
 recovery_deep.html
 recovery_page.html

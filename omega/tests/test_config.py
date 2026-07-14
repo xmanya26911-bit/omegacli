@@ -97,9 +97,9 @@ class TestConfig(unittest.TestCase):
     def test_set_model_valid(self) -> None:
         """Switching to a known model should succeed."""
         self.config.api_key = "sk-test"
-        result = self.config.set_model("qwen3.6-plus-free")
+        result = self.config.set_model("nemotron-3-ultra-free")
         self.assertTrue(result)
-        self.assertEqual(self.config.model, "qwen3.6-plus-free")
+        self.assertEqual(self.config.model, "nemotron-3-ultra-free")
 
     def test_set_model_invalid(self) -> None:
         """Switching to an unknown model should return False."""
@@ -166,10 +166,10 @@ class TestConfig(unittest.TestCase):
 
     def test_save_secret(self) -> None:
         """save_secret should persist API key to secrets file."""
-        self.config.save_secret("api_key", "sk-saved-secret-key")
+        self.config.save_secret("api_key", "sk-real-test-key-1234567890ab")
         # Reload and check
         new_config = Config()
-        self.assertEqual(new_config.api_key, "sk-saved-secret-key")
+        self.assertEqual(new_config.api_key, "sk-real-test-key-1234567890ab")
 
     def test_config_repr(self) -> None:
         """__repr__ should return a descriptive string."""

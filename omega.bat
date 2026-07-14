@@ -1,3 +1,3 @@
 @echo off
 title OMEGA - God-Level CLI Agent
-python "D:\TERMINALCLI\omega\main.py" %*
+python "%~dp0main.py" --tui %*

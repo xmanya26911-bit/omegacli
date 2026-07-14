@@ -7,6 +7,11 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Add structured folder paths
+_OMEGA = os.path.dirname(os.path.abspath(__file__))
+for _p in ["OMEGABACKEND/core", "OMEGATUI", "OMEGADOCTOR", "OMEGAAGENTIC"]:
+    sys.path.insert(0, os.path.join(_OMEGA, _p))
+
 # ─── Startup Auto-Repair ─────────────────────────────────────────
 try:
     from omega_repair import run_startup_repair
@@ -72,6 +77,11 @@ Examples:
     parser.add_argument(
         "--team-task",
         help="Task for the DUAL-OMEGA TEAM to execute",
+    )
+    parser.add_argument(
+        "--tui", "-i",
+        action="store_true",
+        help="Launch OMEGA Enhanced TUI (rich interface)",
     )
     return parser.parse_args()
 
@@ -244,6 +254,12 @@ def main():
     print_banner(config)
 
     agent = Agent(config)
+
+    # ── TUI Mode ──
+    if args.tui:
+        from omega_tui import run_tui
+        run_tui(agent)
+        return
 
     if args.request:
         request = " ".join(args.request)
