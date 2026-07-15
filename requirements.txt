@@ -1,3 +1,7 @@
 requests>=2.28.0
 rich>=13.0.0
 prompt-toolkit>=3.0.40
+google-adk>=2.0.0
+# Server (optional): pip install fastapi uvicorn
+# fastapi>=0.104.0
+# uvicorn>=0.24.0
