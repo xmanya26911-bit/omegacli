@@ -1,0 +1,63 @@
+# Omega White-Label Configuration
+# Edit these values to rebrand OmegaCLI as your own product.
+brand:
+  name: "Omega"              # Your product name
+  tagline: "Your AI Platform" # Short description
+  logo_emoji: "Ω"            # Brand icon (emoji or unicode)
+  primary_color: "#34d399"    # Emerald — change to your brand color
+  secondary_color: "#818cf8"  # Indigo accent
+
+  # Meta
+  company: "Omega Systems"
+  domain: "omega.dev"
+  support_email: "support@omega.dev"
+
+  # Links shown in the CLI
+  docs_url: "https://omega.dev/docs"
+  website_url: "https://omega.dev"
+  repo_url: "https://github.com/xmanya26911-bit/omegacli"
+
+# Model provider
+provider:
+  name: "OpenCode"
+  base_url: "https://opencode.ai/zen/v1"
+  models:
+    - id: "deepseek-v4-flash-free"
+      display: "DeepSeek V4 Flash"
+      free: true
+    - id: "mimo-v2.5-free"
+      display: "Mimo 2.5"
+      free: true
+    - id: "hyp3-free"
+      display: "Hy3"
+      free: true
+    - id: "nemotron-3-ultra-free"
+      display: "Nemotron 3 Ultra"
+      free: true
+    - id: "north-mini-code-free"
+      display: "North Mini Code"
+      free: true
+
+# CLI behavior
+cli:
+  greeting: "How can I help you today?"
+  suggest_on_empty: true
+  max_history: 50
+  stream: true
+
+# Multi-agent
+agents:
+  orchestrator_name: "orchestrator_agent"
+  max_turns: 10
+  show_thinking: true
+
+# Website integration (copy these values to your website config)
+website:
+  title: "Omega Cloud"
+  description: "AI platform with multi-agent orchestration"
+  chat_models:
+    - "deepseek-v4-flash-free"
+    - "mimo-v2.5-free"
+    - "hyp3-free"
+    - "nemotron-3-ultra-free"
+    - "north-mini-code-free"
