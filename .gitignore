@@ -1,0 +1,386 @@
+# ═══════════════════════════════════════
+# OMEGA .gitignore — Core Framework Only
+# Keeps all OMEGA tools + capabilities
+# Blocks operational/hunt artifacts + credentials
+# ═══════════════════════════════════════
+
+# ── Python standard ──
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+*.so
+.venv/
+venv/
+
+# ── OS junk ──
+Thumbs.db
+.DS_Store
+*.swp
+*.swo
+*.lnk
+
+# ── IDE ──
+.idea/
+.vscode/
+*.sublime-*
+
+# ── Node ──
+node_modules/
+
+# ═══════════════════════════════════════
+# ⛔ SESSIONS, STATE, CREDENTIALS
+# ═══════════════════════════════════════
+sessions/
+session_state_*.json
+*.key
+*.pem
+*.cert
+*.p12
+*.pfx
+.env
+*.secrets.json
+gmail_token_*.json
+credential_cache.db
+omega_arsenal_5000.db
+grinapple_proxy.db
+oauth_auth_url.txt
+signed_jwt_test.txt
+
+# ═══════════════════════════════════════
+# ⛔ PASSWORD LISTS (any size)
+# ═══════════════════════════════════════
+rockyou*.txt
+password_list*.txt
+pwd_*.txt
+seclists_*.txt
+cred_stuff_list.txt
+alleged-gmail-passwords.txt
+final_password_list.txt
+passwords.txt
+pass.txt
+credentials.txt
+cred_stuff_results.txt
+
+# ═══════════════════════════════════════
+# ⛔ EXPLOIT ARTIFACTS, LOGS, OUTPUTS
+# ═══════════════════════════════════════
+evolution_knowledge.json
+exploit_knowledge.json
+bg_recon_results.json
+reset_task_result.json
+muations_*.txt
+*.log
+beacon_log.txt
+evolve_log.txt
+omega_log.txt
+err.txt
+error.txt
+error_out.txt
+output.txt
+dns_output.txt
+rogue_output.txt
+scan_log.txt
+scanner_log.txt
+scanner_progress.txt
+h8mail_results.txt
+akamai_err.txt
+check_results.txt
+omega_repair_report.json
+_err_*
+_err_*.txt
+_test_*.txt
+_test_err.txt
+
+# ═══════════════════════════════════════
+# ⛔ BINARIES, ARCHIVES, MEDIA, DOCS
+# ═══════════════════════════════════════
+*.apk
+*.ab
+*.exe
+*.zip
+*.7z
+*.dll
+*.pdb
+*.msi
+*.cab
+*.tar.gz
+*.zip
+*.7z
+*.rar
+*.iso
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.ico
+*.pdf
+*.xlsx
+*.xls
+*.docx
+*.doc
+
+# ═══════════════════════════════════════
+# ⛔ EXTERNAL TOOL DIRECTORIES
+# ═══════════════════════════════════════
+THIRDPARTY/
+JUNK/
+skills_repo/
+RoguePlanet-Exploit/
+phishing/
+exploits/
+techniques/
+tools/
+elite_sites/
+spiderfoot/
+browser-use-repo/
+claude-code-prompts/
+nexus-website/
+chrome_profile/
+ops/
+operations/
+backups/
+cache/
+
+# ═══════════════════════════════════════
+# ⛔ BACKUPS, MEMORIES, SENSITIVE DATA
+# ═══════════════════════════════════════
+memories_backup.json
+_pre_doctor_backup.zip
+gmail_zeroday_backup_*.json
+recovery_deep.html
+recovery_page.html
+research_chess_com_prompt.txt
+google_response.html
+h8mail_results.txt
+
+# ═══════════════════════════════════════
+# ⛔ HUNT/OPS SCRIPTS (our campaigns)
+# ═══════════════════════════════════════
+
+# School/Grinapple campaign (s1-s13)
+s1_check_state.py
+s2_mega_scan.py
+s3_db_hunt.py
+s4_sql_short.py
+s5_teacher_api.py
+s6_download_teacher_apk.py
+s7_aggressive_scan.py
+s8_config_hunt.py
+s9_active_record_api.py
+s10_find_aditi.py
+s11_aditi_deep_search.py
+s12_manage_pages.py
+s13_sa_exploit.py
+scan_gaps.py
+school_beacon.py
+schoolapp_attack.py
+schoolApp.js
+
+# Plesk campaign
+plesk_api_brute.py
+plesk_brute.py
+plesk_bruteforce_final.py
+plesk_cp_graphql.py
+plesk_cp_graphql2.py
+plesk_full_auth.py
+plesk_graphql.py
+plesk_graphql_explore.py
+plesk_hack.py
+plesk_json_login.py
+plesk_login_mutation.py
+plesk_login_post.py
+plesk_login_react.py
+plesk_login_test.py
+plesk_login_up.py
+plesk_password_reset.py
+plesk_reset.py
+plesk_xml_api_exploit.py
+fast_plesk_brute.py
+final_plesk_push.py
+
+# MailEnable campaign
+mailenable_correct_brute.py
+mailenable_full.py
+mailenable_login_brute.py
+mailenable_paths.py
+mailenable_reset.py
+check_mailenable_js.py
+
+# Credential stuffing / brute
+cred_stuffer.py
+cred_stuffer_v2.py
+cred_stuffer_v3.py
+cred_stuffer_v4.py
+cred_stuffer_v4_massive.py
+credential_hunter.py
+comprehensive_brute.py
+final_comprehensive_brute.py
+final_creative.py
+filtered_brute.py
+gen_massive.py
+massive_attack.py
+massive_stuffer.py
+create_accounts.py
+creative_bypasses.py
+creative_data_hunt.py
+non_password_attacks.py
+
+# Target recon scripts
+check_aditi_2025_2026.py
+check_alt_school_ids.py
+check_email.py
+check_ftp_dns.py
+check_gmail.py
+check_libmerge.py
+check_oauth_client.py
+check_other_subdomains.py
+check_plesk_component.py
+check_reset_tasks.py
+check_results.py
+check_services.py
+check_shell.py
+check_state.py
+check_webmail_js.py
+check_winrm.py
+
+# Find/probe/enumerate scripts
+find_admin_api.py
+find_admin_students.py
+find_login_api.py
+find_student_db.py
+find_webmail_endpoint.py
+find_webmail_path.py
+probe_sclcampus_api.py
+probe_shell.py
+enumerate_api.py
+explore_admin.py
+exposed_files_check.py
+more_recon.py
+admin_search.py
+deep_search.py
+dns_check.py
+sql_enum.py
+api_test_simple.py
+call_sclcampus_api.py
+
+# Extract/harvest/dump scripts
+extract_backups.py
+extract_detailed.py
+harvest_data.py
+harvest_data2.py
+harvest_data3.py
+harvest_data4.py
+harvest_data5.py
+db_extract.py
+db_extract2.py
+full_db_extract.py
+dump_students.py
+get_creds.py
+get_creds2.py
+read_configs.py
+search_creds.py
+search_db.py
+search_db2.py
+search_db_student.py
+
+# C2 / shells
+c2_server.py
+fix_c2.py
+test_c2.py
+reupload_shell.py
+sql_query_webshell.py
+
+# Email protocol attacks
+imap_brute.py
+imap_test.py
+pop3_brute.py
+smtp_brute.py
+recon_mail_protocols.py
+gmail_checker.py
+gmail_exploit.py
+refresh_gmail_token.py
+webmail_attack.py
+
+# WinRM attacks
+winrm_brute.py
+winrm_ftp_brute.py
+winrm_ntlm_auth.py
+
+# XML API attacks
+xml_api_auth_test.py
+xml_api_debug.py
+xml_api_login_packet.py
+xml_api_one_at_a_time.py
+xml_api_retry.py
+
+# Password reset / session
+password_reset_exploit.py
+password_reset_monitor.py
+forgotten_password_attempt.py
+session_forgery.py
+rate_limit_wait.py
+
+# Rockyou / password gen
+rockyou_brute.py
+rockyou_search.py
+
+# Targeted / mass attacks
+targeted_attack.py
+wide_scan.py
+port_scan_full.py
+attack_runner.py
+autonomous_loop.py
+breakthrough_attack.py
+alt_sql_servers.py
+alternative_auth.py
+analyze_main_js.py
+analyze_students.py
+api_bulk_fetch.py
+bg_evolve.py
+bg_mass_scanner.py
+evolve_bg.py
+hunt_sumi.py
+local_sql_exploit.py
+monitor_tasks.py
+debug_graphql.py
+graphql_apollo_format.py
+simple_test.py
+
+# Test scripts from campaigns
+test_akamai.py
+test_attacks.py
+test_c2.py
+test_final_report.py
+test_gmail_hack.py
+test_microsoft_scan.py
+test_validation.py
+run_check.py
+
+# Temp/helper scripts
+_append_web.py
+_run_repair.py
+_run_repair2.py
+_web_appender.py
+_write_omega_elite.py
+check_status.ps1
+setup_schedule.ps1
+omega_evolve_task.ps1
+rp_launch_admin.bat
+run_rogue.bat
+school_beacon_build.bat
+
+# Akamai
+akamai_mass_pwn.py
+
+# State / temp files
+.heartbeat
+test_error.txt
+test_output.txt
+
+# Campaign artifacts
+school_beacon.ps1
