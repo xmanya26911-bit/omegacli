@@ -1,5 +1,4 @@
-"""
-OpenCode LLM — ADK-compatible LLM connector for OpenCode Zen / custom providers.
+"""OpenCode LLM — ADK-compatible LLM connector for OpenCode Zen / custom providers.
 
 Allows ADK agents to run on OmegaCLI models (DeepSeek, Mimo, Nemotron, etc.)
 by implementing BaseLlm with an OpenAI-compatible API call.
@@ -14,9 +13,10 @@ import requests
 from google.adk.models import BaseLlm, LLMRegistry
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
+from google.genai import types
 
-DEFAULT_BASE_URL = os.environ.get("OMEGA_BASE_URL", "https://opencode.ai/zen/v1")
-DEFAULT_API_KEY = os.environ.get("OMEGA_API_KEY", "")
+DEFAULT_BASE_URL = "https://opencode.ai/zen/v1"
+DEFAULT_API_KEY = ""
 
 
 class OpenCodeLlm(BaseLlm):
@@ -24,7 +24,7 @@ class OpenCodeLlm(BaseLlm):
 
     Usage:
         LLMRegistry.register(OpenCodeLlm)
-        agent = Agent(model="opencode/deepseek-v4-flash-free", ...)
+        agent = Agent(model="deepseek-v4-flash-free", ...)
     """
 
     model: str = "deepseek-v4-flash-free"
@@ -32,6 +32,22 @@ class OpenCodeLlm(BaseLlm):
     api_key: str = DEFAULT_API_KEY
     temperature: float = 0.7
     max_tokens: int = 4096
+
+    @classmethod
+    def supported_models(cls) -> list[str]:
+        """Register this LLM for all OpenCode/Omega models."""
+        return [
+            "deepseek-v4-flash-free",
+            "mimo-v2.5-free",
+            "hy3-free",
+            "nemotron-3-ultra-free",
+            "north-mini-code-free",
+            "deepseek-v4-flash",
+            "mimo-v2.5",
+            "hy3",
+            "nemotron-3-ultra",
+            "north-mini-code",
+        ]
 
     def generate_content_async(
         self, llm_request: LlmRequest, stream: bool = False
@@ -52,9 +68,10 @@ class OpenCodeLlm(BaseLlm):
             }
 
             headers = {
-                "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
             }
+            if self.api_key:
+                headers["Authorization"] = f"Bearer {self.api_key}"
 
             try:
                 resp = requests.post(
@@ -81,13 +98,22 @@ class OpenCodeLlm(BaseLlm):
                                 content = delta.get("content", "")
                                 if content:
                                     yield LlmResponse(
-                                        content=content,
-                                        finish_reason=data.get("choices", [{}])[0].get(
-                                            "finish_reason"
+                                        content=types.Content(
+                                            parts=[types.Part(text=content)]
                                         ),
+                                        partial=True,
+                                        turn_complete=False,
                                     )
                             except json.JSONDecodeError:
                                 continue
+                    # Signal turn complete at end of stream
+                    yield LlmResponse(
+                        content=types.Content(
+                            parts=[types.Part(text="")]
+                        ),
+                        partial=False,
+                        turn_complete=True,
+                    )
                 else:
                     data = resp.json()
                     content = (
@@ -96,14 +122,19 @@ class OpenCodeLlm(BaseLlm):
                         .get("content", "")
                     )
                     yield LlmResponse(
-                        content=content,
-                        finish_reason=data.get("choices", [{}])[0].get("finish_reason"),
+                        content=types.Content(
+                            parts=[types.Part(text=content)]
+                        ),
+                        finish_reason="stop",
                     )
 
             except requests.exceptions.RequestException as e:
                 yield LlmResponse(
-                    content=f"Error: {e}",
-                    finish_reason="error",
+                    content=types.Content(
+                        parts=[types.Part(text=f"Error: {e}")]
+                    ),
+                    error_message=str(e),
+                    error_code="API_ERROR",
                 )
 
         return _generate()
@@ -111,26 +142,41 @@ class OpenCodeLlm(BaseLlm):
     def _convert_messages(self, llm_request: LlmRequest) -> list[dict[str, str]]:
         """Convert ADK's internal message format to OpenAI chat format."""
         messages = []
-        # System prompt
-        if llm_request.system_instruction:
-            messages.append({
-                "role": "system",
-                "content": llm_request.system_instruction,
-            })
-        # Conversation history
-        if llm_request.history:
-            for msg in llm_request.history:
-                role = getattr(msg, "role", "user")
-                content = getattr(msg, "content", "")
-                if content:
-                    messages.append({"role": role, "content": str(content)})
-        # Current user message
+        # System prompt — from config.system_instruction
+        try:
+            if llm_request.config and llm_request.config.system_instruction:
+                si = llm_request.config.system_instruction
+                if hasattr(si, "parts") and si.parts:
+                    for part in si.parts:
+                        if hasattr(part, "text") and part.text:
+                            messages.append({
+                                "role": "system",
+                                "content": part.text,
+                            })
+                elif hasattr(si, "text") and si.text:
+                    messages.append({
+                        "role": "system",
+                        "content": si.text,
+                    })
+        except Exception:
+            pass  # System instruction is optional
+        # Current user message from contents
         if llm_request.contents:
             for c in llm_request.contents:
                 role = getattr(c, "role", "user")
-                content = getattr(c, "content", "")
-                if content:
-                    messages.append({"role": role, "content": str(content)})
+                for part in getattr(c, "parts", []) or []:
+                    if hasattr(part, "text") and part.text:
+                        messages.append({"role": role, "content": str(part.text)})
+                    elif hasattr(part, "function_call") and part.function_call:
+                        messages.append({
+                            "role": "assistant",
+                            "content": json.dumps({
+                                "function_call": {
+                                    "name": part.function_call.name,
+                                    "arguments": str(part.function_call.args),
+                                }
+                            }),
+                        })
         return messages
 
 
