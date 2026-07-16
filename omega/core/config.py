@@ -37,12 +37,15 @@ AVAILABLE_MODELS: list[str] = [
     "deepseek-v4-flash-free",
     # Claude models via Aerolink
     "claude-fable-5",
+    # Z.AI GLM models
+    "glm-5.2",
 ]
 
 # Models that exist in AVAILABLE_MODELS but are confirmed dead/non-functional
 # on the current API endpoint. Config will auto-fallback to DEFAULT_MODEL.
 DEAD_MODELS: frozenset[str] = frozenset({
     "qwen3.6-plus-free",
+    "glm-5.2",
 })
 
 MODEL_PROVIDERS: dict[str, dict[str, str]] = {
@@ -53,6 +56,10 @@ MODEL_PROVIDERS: dict[str, dict[str, str]] = {
     "claude-fable-5": {
         "base_url": "https://capi.aerolink.lat",
         "api_key": "",  # Must be set via env var or secrets file
+    },
+    "glm-5.2": {
+        "base_url": "https://api.z.ai/api/paas/v4",
+        "api_key": "",  # Must be set via env var OMEGA_API_KEY or secrets file
     },
 }
 
@@ -191,6 +198,15 @@ class Config:
         env_theme = os.environ.get("OMEGA_THEME")
         if env_theme:
             self.theme = env_theme
+
+        # Re-apply dead-model fallback after env overrides
+        if self.model in DEAD_MODELS:
+            warnings.warn(
+                f"Model '{self.model}' (from environment) is no longer supported on this API. "
+                f"Falling back to '{DEFAULT_MODEL}'. "
+                f"Unset OMEGA_MODEL env var to stop this warning."
+            )
+            self.model = DEFAULT_MODEL
 
     def _resolve_provider(self) -> None:
         """Auto-configure provider for known models unless env vars override."""

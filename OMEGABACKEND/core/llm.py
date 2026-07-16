@@ -35,12 +35,17 @@ class LLMClient:
         self.session.headers.update({
             "Content-Type": "application/json",
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Origin": "https://opencode.ai",
-            "Referer": "https://opencode.ai/",
         })
+        # Set origin/referer based on which API provider we're using
+        model = self.config.model or ""
+        if "z.ai" in self.config.base_url or "glm" in model:
+            self.session.headers["Origin"] = "https://z.ai"
+            self.session.headers["Referer"] = "https://z.ai/"
+        else:
+            self.session.headers["Origin"] = "https://opencode.ai"
+            self.session.headers["Referer"] = "https://opencode.ai/"
         # Free models on OpenCode Zen don't need auth, and a stale placeholder
         # key will cause 401. Only send auth for models that need it.
-        model = self.config.model or ""
         if config.api_key and not model.endswith("-free"):
             self.session.headers["Authorization"] = f"Bearer {config.api_key}"
         # Token tracking
