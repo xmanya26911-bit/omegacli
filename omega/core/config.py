@@ -45,6 +45,7 @@ AVAILABLE_MODELS: list[str] = [
 # on the current API endpoint. Config will auto-fallback to DEFAULT_MODEL.
 DEAD_MODELS: frozenset[str] = frozenset({
     "qwen3.6-plus-free",
+    "glm-5.2",
 })
 
 MODEL_PROVIDERS: dict[str, dict[str, str]] = {
@@ -197,6 +198,15 @@ class Config:
         env_theme = os.environ.get("OMEGA_THEME")
         if env_theme:
             self.theme = env_theme
+
+        # Re-apply dead-model fallback after env overrides
+        if self.model in DEAD_MODELS:
+            warnings.warn(
+                f"Model '{self.model}' (from environment) is no longer supported on this API. "
+                f"Falling back to '{DEFAULT_MODEL}'. "
+                f"Unset OMEGA_MODEL env var to stop this warning."
+            )
+            self.model = DEFAULT_MODEL
 
     def _resolve_provider(self) -> None:
         """Auto-configure provider for known models unless env vars override."""
