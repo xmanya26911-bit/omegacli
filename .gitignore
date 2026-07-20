@@ -18,6 +18,10 @@ venv/
 
 # ── OS junk ──
 Thumbs.db
+
+# ── Logs ──
+*.jsonl
+logs/
 .DS_Store
 *.swp
 *.swo
