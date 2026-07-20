@@ -10,6 +10,18 @@ This package defines the public API boundary.
 
 from __future__ import annotations
 
+import os
+import sys
+
+# Ensure apps/cli is on the path for re-exports
+_pkg = os.path.dirname(__file__)       # packages/agent_runtime/
+_root = os.path.dirname(_pkg)           # packages/
+_root = os.path.dirname(_root)          # <repo_root>
+_cli = os.path.join(_root, "apps", "cli")
+if os.path.isdir(_cli) and _cli not in sys.path:
+    sys.path.insert(0, _root)
+    sys.path.insert(0, _cli)
+
 from typing import Any, AsyncIterator, Optional
 
 # Re-export from CLI core implementation

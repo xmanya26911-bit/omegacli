@@ -139,6 +139,7 @@ phishing/
 exploits/
 techniques/
 tools/
+!packages/tools/
 elite_sites/
 spiderfoot/
 browser-use-repo/
