@@ -8,6 +8,7 @@ from enum import Enum, auto
 from typing import Any, Generic, TypeVar
 
 from omega.core.config import Config, ConfigError, AVAILABLE_MODELS, MODEL_PROVIDERS
+from packages.errors import OmegaException, lookup as error_lookup
 
 T = TypeVar("T")
 
@@ -96,13 +97,34 @@ class ToolResult:
 
 # ── Exceptions ───────────────────────────────────────────────────────────
 
-class OmegaError(Exception):
-    """Base exception for all OMEGA errors."""
+class OmegaError(OmegaException):
+    """Base exception for all OMEGA errors.
+
+    Backward-compatible wrapper around packages.errors.OmegaException.
+    If no ErrorCode is given, falls back to the catalog lookup or UNKNOWN.
+    """
+
     def __init__(self, message: str, code: str | None = None,
                  details: dict[str, Any] | None = None):
-        self.code = code or "UNKNOWN_ERROR"
-        self.details = details or {}
-        super().__init__(message)
+        # Try to find a matching catalog code
+        catalog_code = error_lookup(code) if code else None
+        if catalog_code:
+            detail_str = str(details or {}) if details else ""
+            super().__init__(catalog_code, details=detail_str)
+        else:
+            # Fallback: create a synthetic ErrorCode from the message
+            from packages.errors import ErrorCode
+            fake_code = ErrorCode(
+                code=code or "UNKNOWN_ERROR",
+                message=message,
+                suggestion="Check the system logs for more details.",
+                http_status=500,
+            )
+            super().__init__(fake_code, details=str(details or {}))
+
+    @property
+    def message(self) -> str:
+        return self.code.message
 
 
 class ToolExecutionError(OmegaError):
@@ -115,7 +137,9 @@ class ToolExecutionError(OmegaError):
 
 class ConfigurationError(OmegaError):
     """Raised when system configuration is invalid."""
-    pass
+    def __init__(self, message: str = "", code: str = "CONFIG_ERROR",
+                 details: dict[str, Any] | None = None):
+        super().__init__(message, code=code, details=details)
 
 
 class MemoryError(OmegaError):
