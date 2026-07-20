@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ω OMEGA</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0f;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      height: 100vh; overflow: hidden;
+    }
+    .splash { text-align: center; }
+    .splash h1 {
+      font-size: 3rem; font-weight: 700;
+      background: linear-gradient(135deg, #e0e0e0, #4285F4);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .splash p { margin-top: 1rem; color: #888; font-size: 1rem; }
+    .loader { margin-top: 2rem; display: inline-block; width: 24px; height: 24px;
+      border: 2px solid #333; border-top-color: #4285F4; border-radius: 50%;
+      animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+  <script>
+    // Redirect to the chat app on load
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        window.location.href = 'https://omega-chat-five.vercel.app';
+      }, 800);
+    });
+  </script>
+</head>
+<body>
+  <div class="splash">
+    <h1>Ω</h1>
+    <p>OMEGA — loading...</p>
+    <div class="loader"></div>
+  </div>
+</body>
+</html>

@@ -22,6 +22,11 @@ Thumbs.db
 # ── Logs ──
 *.jsonl
 logs/
+
+# ── Desktop app ──
+apps/desktop/node_modules/
+apps/desktop/src-tauri/target/
+apps/desktop/package-lock.json
 .DS_Store
 *.swp
 *.swo

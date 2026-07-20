@@ -1,0 +1,28 @@
+[package]
+name = "omega-desktop"
+version = "1.5.0"
+description = "Ω OMEGA Desktop — Native AI assistant"
+authors = ["Manya"]
+edition = "2021"
+
+[lib]
+name = "omega_desktop_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[package.metadata]
+tauri-config = "tauri.conf.json"
+
+[dependencies]
+tauri = { version = "2", features = [
+    "tray-icon",
+] }
+tauri-plugin-shell = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-process = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
